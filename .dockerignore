@@ -1,0 +1,52 @@
+# Git
+.git/
+.gitignore
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
+*.egg-info/
+*.egg
+dist/
+build/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+build/
+dist/
+.next/
+out/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+!.env.example
+
+# Docker
+.dockerignore
+docker-compose*
+Dockerfile*
+
+# Логи и тесты
+*.log
+coverage/
+.jest/
+
+# Системные файлы
+.DS_Store
+Thumbs.db
+
+# Документация (опционально)
+README.md
+CHANGELOG.md
