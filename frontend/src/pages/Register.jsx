@@ -49,7 +49,6 @@ const Register = () => {
         setLoading(true);
 
         try {
-            console.log('Attempting registration with:', { username, email });
             await register(username, email, password);
             navigate('/login', {
                 state: { message: 'Регистрация успешна! Теперь вы можете войти.' }

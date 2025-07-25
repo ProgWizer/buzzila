@@ -4,7 +4,8 @@ import {
   ChartBarIcon,
   PencilIcon,
   TrashIcon,
-  XMarkIcon
+  XMarkIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import { Line, Pie, Bar } from 'react-chartjs-2';
@@ -565,10 +566,120 @@ const ModeratorPanel = () => {
 
   // --- JSX рендер: полностью копирую layout и стили из Admin.jsx, ---
   return (
-    <div className="min-h-screen bg-[#F1F8FF] dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 py-12 flex flex-col items-center transition-all">
+    <div className="min-h-screen bg-[#F1F8FF] dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 py-6 sm:py-12 flex flex-col items-center transition-all overflow-x-hidden">
+      {/* Унификация стилей для секций */}
+      <style>{`
+        .panel-section {
+          background: var(--tw-bg-opacity,1) #fff;
+          border-radius: 18px;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+          border: 1.5px solid #e5e7eb;
+          padding: 18px 10px 18px 10px;
+          margin-bottom: 18px;
+          transition: box-shadow 0.2s, border 0.2s, background 0.2s;
+          max-width: 100%;
+          overflow-x: auto;
+        }
+        .dark .panel-section {
+          background: #181f2a;
+          border-color: #374151;
+        }
+        .panel-header {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 14px;
+        }
+        .panel-title {
+          font-size: 1.25rem;
+          font-weight: 800;
+          color: #0d47a1;
+          letter-spacing: -0.5px;
+          line-height: 1.1;
+        }
+        .dark .panel-title {
+          color: #b3cfff;
+        }
+        .panel-icon {
+          width: 32px;
+          height: 32px;
+          color: #2563eb;
+        }
+        .dark .panel-icon {
+          color: #60a5fa;
+        }
+        .panel-btn {
+          border-radius: 10px;
+          font-weight: 700;
+          font-size: 15px;
+          padding: 14px 0;
+          min-width: 120px;
+          min-height: 44px;
+          transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+          outline: none;
+        }
+        .panel-btn:active {
+          box-shadow: 0 1px 2px rgba(0,0,0,0.10);
+        }
+        .panel-btn-primary {
+          background: #0ea5e9;
+          color: #fff;
+        }
+        .panel-btn-primary:hover {
+          background: #0369a1;
+        }
+        .panel-btn-secondary {
+          background: #e0e7ef;
+          color: #0d47a1;
+        }
+        .panel-btn-secondary:hover {
+          background: #b3cfff;
+        }
+        .dark .panel-btn-secondary {
+          background: #232b3a;
+          color: #b3cfff;
+        }
+        .panel-table {
+          border-radius: 12px;
+          overflow: hidden;
+          width: 100%;
+          margin-bottom: 8px;
+          font-size: 15px;
+          line-height: 1.4;
+          background: #fff;
+          color: #1a202c;
+        }
+        .dark .panel-table {
+          background: #181f2a;
+          color: #f3f4f6;
+        }
+        .panel-table th, .panel-table td {
+          padding: 13px 14px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          max-width: 140px;
+        }
+        .panel-table th {
+          font-weight: 700;
+          background: #f1f8ff;
+          color: #0d47a1;
+        }
+        .dark .panel-table th {
+          background: #232b3a;
+          color: #b3cfff;
+        }
+        @media (max-width: 640px) {
+          .panel-section { padding: 10px 2px 10px 2px; border-radius: 12px; }
+          .panel-title { font-size: 1.1rem; }
+          .panel-table th, .panel-table td { padding: 9px 7px; font-size: 13.5px; max-width: 90px; }
+          .panel-btn { font-size: 14px !important; padding: 12px 0 !important; min-width: 90px !important; min-height: 40px !important; }
+        }
+      `}</style>
       {/* Хлебные крошки */}
-      <nav className="w-full max-w-[1200px] mb-4 text-sm">
-        <ol className="flex items-center space-x-2 text-gray-400 dark:text-gray-400">
+      <nav className="w-full max-w-[1200px] mb-1 sm:mb-4 text-xs sm:text-sm">
+        <ol className="flex flex-wrap items-center space-x-1 sm:space-x-2 text-gray-400 dark:text-gray-400 break-words">
           <li>
             <a href="/" className="hover:underline text-blue-400 dark:text-blue-300">Главная</a>
           </li>
@@ -577,49 +688,47 @@ const ModeratorPanel = () => {
         </ol>
       </nav>
       {/* Крупный заголовок */}
-      <h1 className="text-4xl md:text-5xl lg:text-[64px] font-bold text-gray-900 dark:text-white mb-4 text-center font-['Inter'] drop-shadow-lg transition-colors">Модератор-панель</h1>
-      <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mb-10 text-center">Управление достижениями, сценариями и аналитикой</p>
-      <div className="w-full max-w-full md:max-w-[900px] flex flex-col gap-8 mb-12 px-2 md:px-0">
+      <h1 className="text-lg sm:text-3xl md:text-5xl lg:text-[48px] font-bold text-gray-900 dark:text-white mb-1 sm:mb-4 text-center font-['Inter'] drop-shadow-lg transition-colors break-words leading-tight">Модератор-панель</h1>
+      <p className="text-xs sm:text-base md:text-lg text-gray-700 dark:text-gray-300 mb-3 sm:mb-10 text-center break-words">Управление достижениями, сценариями и аналитикой</p>
+      <div className="w-full max-w-full md:max-w-[900px] flex flex-col gap-3 sm:gap-8 mb-4 sm:mb-12 px-0.5 sm:px-2 md:px-0">
         {/* Карточка достижений */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-8 mb-6 w-full max-w-[900px] transition-all">
-          <div className="flex items-center mb-6">
-            <ChartBarIcon className="w-12 h-12 text-blue-800 dark:text-blue-300 mr-4" />
-            <span className="text-3xl font-extrabold text-blue-900 dark:text-blue-200">Достижения</span>
+        <div className="panel-section">
+          <div className="panel-header">
+            <ChartBarIcon className="panel-icon w-6 h-6 sm:w-12 sm:h-12 text-blue-800 dark:text-blue-300 mr-0 sm:mr-4" />
+            <span className="panel-title text-base sm:text-3xl font-extrabold text-blue-900 dark:text-blue-200">Достижения</span>
           </div>
           {/* Поиск и сортировка */}
-          <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
-            <div className="flex flex-col sm:flex-row gap-2 w-full">
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-2 sm:mb-4 gap-1 sm:gap-0">
               <input
                 type="text"
                 placeholder="Поиск по названию или описанию"
-                className="border border-gray-400 dark:border-gray-700 rounded-[8px] px-3 py-2 text-base focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 w-full sm:w-64 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 transition-colors"
+              className="border border-gray-400 dark:border-gray-700 rounded-[8px] px-2 py-1.5 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 w-full sm:w-64 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 transition-colors text-xs sm:text-base"
                 value={achievementSearch}
                 onChange={e => setAchievementSearch(e.target.value)}
               />
               <button
-                className={`px-5 py-2 rounded-lg font-semibold transition ${achievementSort === 'title' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200'} hover:bg-blue-600 dark:hover:bg-blue-600`}
+              className={`px-3 py-1.5 rounded-lg font-semibold transition ${achievementSort === 'title' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200'} hover:bg-blue-600 dark:hover:bg-blue-600 text-xs sm:text-base`}
                 onClick={() => setAchievementSort('title')}
-                style={{ minWidth: '180px' }}
+              style={{ minWidth: '90px' }}
               >
                 Сортировать по названию
               </button>
               <button 
                 onClick={() => setShowAddAchievementModal(true)}
-                className="bg-green-500 text-white rounded-[8px] px-4 py-2 hover:bg-green-700 transition min-w-[180px]"
+              className="bg-green-500 text-white rounded-[8px] px-2 py-1.5 hover:bg-green-700 transition min-w-[90px] text-xs sm:text-base"
               >
                 Добавить новое достижение
               </button>
-            </div>
           </div>
           {/* Таблица достижений */}
-          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-4">
-            <table className="min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs md:text-sm transition-colors">
+          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-2">
+            <table className="min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-[11px] sm:text-sm transition-colors">
               <thead>
                 <tr className="bg-[#F1F8FF] dark:bg-gray-700 text-[#0D47A1] dark:text-blue-200 text-left">
-                  <th className="px-4 py-2 font-semibold">Название</th>
-                  <th className="px-4 py-2 font-semibold">Описание</th>
-                  <th className="px-4 py-2 font-semibold">Требование</th>
-                  <th className="px-4 py-2 font-semibold">Действия</th>
+                  <th className="px-2 py-2 font-semibold">Название</th>
+                  <th className="px-2 py-2 font-semibold">Описание</th>
+                  <th className="px-2 py-2 font-semibold hidden xs:table-cell">Требование</th>
+                  <th className="px-2 py-2 font-semibold">Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -643,39 +752,38 @@ const ModeratorPanel = () => {
                         key={achievement.id}
                         className={`border-t border-gray-100 dark:border-gray-700 transition ${idx % 2 === 0 ? 'bg-white dark:bg-gray-900/80' : 'bg-gray-50 dark:bg-gray-900/60'} hover:bg-[#F1F8FF] dark:hover:bg-gray-800/70`}
                       >
-                        <td className="px-4 py-2 text-gray-900 dark:text-gray-100">
-                          {achievement.icon && (
-                            <img
-                              src={
-                                achievement.icon.startsWith('http')
-                                  ? achievement.icon
-                                  : achievement.icon.startsWith('/api/achievement_icon/')
-                                    ? achievement.icon
-                                    : `/api/achievement_icon/${achievement.icon.replace('/api/achievement_icon/', '')}`
-                              }
-                              alt="icon"
-                              style={{ width: 32, height: 32, objectFit: 'contain', marginRight: 8, verticalAlign: 'middle', display: 'inline-block' }}
-                              onError={e => { e.target.style.display = 'none'; }}
-                            />
-                          )}
-                          {achievement.title}
-                        </td>
+                        <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{achievement.title}</td>
                         <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{achievement.description}</td>
-                        <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{reqText}</td>
+                        <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden xs:table-cell">{reqText}</td>
                         <td className="px-4 py-2">
                           <div className="flex gap-2 items-center">
-                            {/* Кнопки действий для достижений */}
                             <button 
                               onClick={() => handleEditAchievementClick(achievement)}
-                              className="bg-[#0D47A1] text-white rounded-[8px] px-3 py-1 mr-2 hover:bg-[#1565c0] transition"
+                              className="bg-blue-600 hover:bg-blue-700 text-white rounded-[8px] px-3 py-1 transition flex items-center"
                             >
-                              <PencilIcon className="w-4 h-4 inline" />
+                              <PencilIcon className="w-4 h-4 mr-1" />
+                              Редактировать
                             </button>
                             <button 
                               onClick={() => handleDeleteAchievement(achievement.id)}
-                              className="bg-red-500 text-white rounded-[8px] px-3 py-1 hover:bg-red-700 transition"
+                              className="bg-red-500 hover:bg-red-700 text-white rounded-[8px] px-3 py-1 transition flex items-center"
                             >
-                              <TrashIcon className="w-4 h-4 inline" />
+                              <TrashIcon className="w-4 h-4 mr-1" />
+                              Удалить
+                            </button>
+                            <button 
+                              onClick={() => (achievement)}
+                              className="bg-gray-500 hover:bg-gray-700 text-white rounded-[8px] px-3 py-1 transition flex items-center"
+                            >
+                              <UserGroupIcon className="w-4 h-4 mr-1" />
+                              Назначить
+                            </button>
+                            <button 
+                              onClick={() => (achievement)}
+                              className="bg-gray-500 hover:bg-gray-700 text-white rounded-[8px] px-3 py-1 transition flex items-center"
+                            >
+                              <UserGroupIcon className="w-4 h-4 mr-1" />
+                              Назначить
                             </button>
                           </div>
                         </td>
@@ -696,10 +804,10 @@ const ModeratorPanel = () => {
           </div>
         </div>
         {/* Карточка сценариев */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-8 mb-6 w-full max-w-[900px] transition-all">
-          <div className="flex items-center mb-6">
-            <ChartBarIcon className="w-12 h-12 text-blue-800 dark:text-blue-300 mr-4" />
-            <span className="text-3xl font-extrabold text-blue-900 dark:text-blue-200">Сценарии</span>
+        <div className="panel-section">
+          <div className="panel-header">
+            <ChartBarIcon className="panel-icon w-12 h-12 text-blue-800 dark:text-blue-300 mr-4" />
+            <span className="panel-title text-3xl font-extrabold text-blue-900 dark:text-blue-200">Сценарии</span>
           </div>
           {/* Поиск и сортировка */}
           <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
@@ -731,12 +839,12 @@ const ModeratorPanel = () => {
             <table className="min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs md:text-sm transition-colors">
               <thead>
                 <tr className="bg-[#F1F8FF] dark:bg-gray-700 text-[#0D47A1] dark:text-blue-200 text-left">
-                  <th className="px-4 py-2 font-semibold">Название</th>
-                  <th className="px-4 py-2 font-semibold">Описание</th>
-                  <th className="px-4 py-2 font-semibold">Сфера</th>
-                  <th className="px-4 py-2 font-semibold">Ситуация</th>
-                  <th className="px-4 py-2 font-semibold">Шаблон</th>
-                  <th className="px-4 py-2 font-semibold">Действия</th>
+                  <th className="px-2 py-2 font-semibold">Название</th>
+                  <th className="px-2 py-2 font-semibold">Описание</th>
+                  <th className="px-2 py-2 font-semibold hidden xs:table-cell">Сфера</th>
+                  <th className="px-2 py-2 font-semibold hidden sm:table-cell">Ситуация</th>
+                  <th className="px-2 py-2 font-semibold hidden md:table-cell">Шаблон</th>
+                  <th className="px-2 py-2 font-semibold">Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -754,23 +862,26 @@ const ModeratorPanel = () => {
                     >
                       <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{scenario.name}</td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{scenario.description}</td>
-                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{scenario.sphere}</td>
-                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{scenario.situation}</td>
-                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{scenario.is_template ? 'Да' : 'Нет'}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden xs:table-cell">{scenario.sphere}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{scenario.situation}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden md:table-cell">{scenario.is_template ? 'Да' : 'Нет'}</td>
                       <td className="px-4 py-2">
-                        {/* Кнопки действий для сценариев */}
-                        <button 
-                          onClick={() => handleEditScenarioClick(scenario)}
-                          className="bg-[#0D47A1] text-white rounded-[8px] px-3 py-1 mr-2 hover:bg-[#1565c0] transition"
-                        >
-                          <PencilIcon className="w-4 h-4 inline" />
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteScenario(scenario.id)}
-                          className="bg-red-500 text-white rounded-[8px] px-3 py-1 hover:bg-red-700 transition"
-                        >
-                          <TrashIcon className="w-4 h-4 inline" />
-                        </button>
+                        <div className="flex gap-2 items-center">
+                          <button 
+                            onClick={() => handleEditScenarioClick(scenario)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-[8px] px-3 py-1 transition flex items-center"
+                          >
+                            <PencilIcon className="w-4 h-4 mr-1" />
+                            Редактировать
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteScenario(scenario.id)}
+                            className="bg-red-500 hover:bg-red-700 text-white rounded-[8px] px-3 py-1 transition flex items-center"
+                          >
+                            <TrashIcon className="w-4 h-4 mr-1" />
+                            Удалить
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -831,7 +942,7 @@ const ModeratorPanel = () => {
         {!collapseCharts && <>
           {/* Line: динамика диалогов (без пользователей) */}
           {dailyStats && Array.isArray(dailyStats.dates) && Array.isArray(dailyStats.dialogs_per_day) && dailyStats.dates.length > 0 ? (
-            <div className="rounded-2xl shadow-xl p-6 mb-6 overflow-x-auto transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-fade-in">
+            <div className="rounded-2xl shadow-xl p-6 mb-6 overflow-x-auto transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-fade-in min-h-[260px] sm:min-h-[340px]">
               <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Динамика диалогов (30 дней)</h2>
               <div className="mb-2 text-sm text-gray-600 dark:text-gray-400">
                 <b>Как пользоваться:</b> Выберите период дат и нажмите "Показать". График отобразит завершённые диалоги по дням.
@@ -853,9 +964,10 @@ const ModeratorPanel = () => {
                 }} className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-700 transition">Показать</button>
               </div>
               {loadingCharts && <div className="text-center text-blue-500 py-4 animate-pulse">Загрузка данных...</div>}
+              <div className="w-full min-w-[340px]">
               <Line
                 data={{
-                  labels: dailyStats.dates,
+                    labels: dailyStats.dates.map((d, i) => i % 2 === 0 ? d : ''),
                   datasets: [
                     {
                       label: 'Завершённые диалоги',
@@ -863,6 +975,8 @@ const ModeratorPanel = () => {
                       borderColor: getChartColors().bg2,
                       backgroundColor: getChartColors().bg2,
                       tension: 0.3,
+                        pointRadius: 4,
+                        pointHoverRadius: 7,
                     },
                   ],
                 }}
@@ -870,15 +984,16 @@ const ModeratorPanel = () => {
                   responsive: true,
                   animation: { duration: 1200, easing: 'easeInOutQuart' },
                   plugins: {
-                    legend: { position: 'top', labels: { color: getChartColors().text } },
+                      legend: { position: 'top', labels: { color: getChartColors().text, font: { size: 14 } } },
                     title: { display: false },
                   },
                   scales: {
-                    x: { title: { display: true, text: 'Дата', color: getChartColors().text }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                    y: { title: { display: true, text: 'Количество', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
+                      x: { title: { display: true, text: 'Дата', color: getChartColors().text }, ticks: { color: getChartColors().text, font: { size: 12 } }, grid: { color: getChartColors().grid } },
+                      y: { title: { display: true, text: 'Количество', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text, font: { size: 12 } }, grid: { color: getChartColors().grid } },
                   },
                 }}
               />
+              </div>
             </div>
           ) : dailyStats && (
             <div className="text-center text-red-500 py-8 animate-fade-in">
@@ -909,8 +1024,8 @@ const ModeratorPanel = () => {
                     plugins: { legend: { display: false, labels: { color: getChartColors().text } } },
                     indexAxis: 'x',
                     scales: {
-                      x: { title: { display: false }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                      y: { title: { display: true, text: 'Диалогов', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
+                      x: { title: { display: false }, ticks: { color: getChartColors().text, font: { size: 12 } }, grid: { color: getChartColors().grid } },
+                      y: { title: { display: true, text: 'Диалогов', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text, font: { size: 12 } }, grid: { color: getChartColors().grid } },
                     },
                   }}
                 />
@@ -966,8 +1081,8 @@ const ModeratorPanel = () => {
                   plugins: { legend: { display: false, labels: { color: getChartColors().text } } },
                   indexAxis: 'y',
                   scales: {
-                    x: { title: { display: true, text: 'Пользователей', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                    y: { title: { display: true, text: 'Достижение', color: getChartColors().text }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
+                    x: { title: { display: true, text: 'Пользователей', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text, font: { size: 12 } }, grid: { color: getChartColors().grid } },
+                    y: { title: { display: true, text: 'Достижение', color: getChartColors().text }, ticks: { color: getChartColors().text, font: { size: 12 } }, grid: { color: getChartColors().grid } },
                   },
                   onClick: (evt, elements) => {
                     if (elements.length > 0) {
@@ -1042,15 +1157,15 @@ const ModeratorPanel = () => {
       {/* Модальные окна для CRUD достижений и сценариев, подтверждения удаления */}
       {showAddAchievementModal && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 transition-colors">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-700 transition-colors">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Добавить новое достижение</h2>
-              <button onClick={() => setShowAddAchievementModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-2 sm:p-6 w-full max-w-xs sm:max-w-md max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 transition-colors relative animate-fade-in">
+            <div className="flex justify-between items-center mb-2 sm:mb-4">
+              <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Добавить новое достижение</h2>
+              <button onClick={() => setShowAddAchievementModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 p-1 sm:p-2">
                 <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleAddAchievementSubmit}>
-              <div className="mb-4">
+            <form onSubmit={handleAddAchievementSubmit} className="space-y-2 sm:space-y-4">
+              <div>
                 <label htmlFor="achievement-title" className="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2">Название:</label>
                 <input
                   type="text"
@@ -1062,7 +1177,7 @@ const ModeratorPanel = () => {
                   required
                 />
               </div>
-              <div className="mb-4">
+              <div>
                 <label htmlFor="achievement-description" className="block text-gray-700 dark:text-gray-200 text-sm font-bold mb-2">Описание:</label>
                 <textarea
                   id="achievement-description"
@@ -1148,20 +1263,20 @@ const ModeratorPanel = () => {
                   </div>
                 ) : null}
               </div>
-              <div className="flex justify-end">
+              <div className="flex flex-col sm:flex-row gap-2 mt-4">
                 <button
                   type="button"
                   onClick={() => {
                     setShowAddAchievementModal(false);
                     setAchievementFormData({ title: '', description: '', icon: '', points: 0, is_repeatable: false, requirements: { type: 'none', value: '' } });
                   }}
-                  className="bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-black dark:text-gray-100 font-bold py-2 px-4 rounded mr-2 transition-colors"
+                  className="bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-black dark:text-gray-100 font-bold py-2 w-full rounded transition-colors"
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
-                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition-colors"
+                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 w-full rounded transition-colors"
                 >
                   Добавить
                 </button>
@@ -1172,170 +1287,77 @@ const ModeratorPanel = () => {
       )}
       {showEditAchievementModal && currentAchievement && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Редактировать достижение: {currentAchievement.title}</h2>
-              <button onClick={() => setShowEditAchievementModal(false)} className="text-gray-500 hover:text-gray-700">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-2 sm:p-6 w-full max-w-xs sm:max-w-md max-h-[90vh] overflow-y-auto relative">
+            <div className="flex justify-between items-center mb-2 sm:mb-4">
+              <h2 className="text-lg sm:text-2xl font-bold">Редактировать достижение: {currentAchievement.title}</h2>
+              <button onClick={() => setShowEditAchievementModal(false)} className="text-gray-500 hover:text-gray-700 p-1 sm:p-2">
                 <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleSaveAchievementEdit}>
-              {/* ...поля формы для редактирования достижения (аналогично add)... */}
+            <form onSubmit={handleSaveAchievementEdit} className="space-y-2 sm:space-y-4">
+              {/* ...поля формы для редактирования достижения... */}
+              <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                <button type="button" onClick={() => setShowEditAchievementModal(false)} className="bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-black dark:text-gray-100 font-bold py-2 w-full rounded transition-colors">Отмена</button>
+                <button type="submit" className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 w-full rounded transition-colors">Сохранить</button>
+              </div>
             </form>
           </div>
         </div>
       )}
       {showAddScenarioModal && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 transition-colors">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Добавить новый сценарий</h2>
-              <button onClick={() => setShowAddScenarioModal(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 transition-colors">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-2 sm:p-6 w-full max-w-xs sm:max-w-md max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 transition-colors relative animate-fade-in">
+            <div className="flex justify-between items-center mb-2 sm:mb-6">
+              <h2 className="panel-title text-gray-900 dark:text-gray-100">Добавить новый сценарий</h2>
+              <button onClick={() => setShowAddScenarioModal(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-1 sm:p-2 transition-colors">
                 <XMarkIcon className="w-7 h-7" />
               </button>
             </div>
-            <form onSubmit={handleAddScenarioSubmit} className="space-y-6">
+            <form onSubmit={handleAddScenarioSubmit} className="space-y-2 sm:space-y-6">
               <div>
                 <label htmlFor="scenario-title" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Название:</label>
-                <input
-                  type="text"
-                  id="scenario-title"
-                  name="title"
-                  value={scenarioFormData.name}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, name: e.target.value })}
-                  className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
-                  required
-                  placeholder="Введите название сценария"
-                />
+                <input type="text" id="scenario-title" name="title" value={scenarioFormData.name} onChange={e => setScenarioFormData({ ...scenarioFormData, name: e.target.value })} className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm" required placeholder="Введите название сценария" />
               </div>
               <div>
                 <label htmlFor="scenario-description" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Описание:</label>
-                <textarea
-                  id="scenario-description"
-                  name="description"
-                  value={scenarioFormData.description}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, description: e.target.value })}
-                  className="w-full min-h-[60px] h-24 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm resize-none"
-                  required
-                  placeholder="Введите описание сценария"
-                ></textarea>
+                <textarea id="scenario-description" name="description" value={scenarioFormData.description} onChange={e => setScenarioFormData({ ...scenarioFormData, description: e.target.value })} className="w-full min-h-[60px] h-24 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm resize-none" required placeholder="Введите описание сценария"></textarea>
               </div>
               <div className="border-b border-gray-200 dark:border-gray-700/40 pb-4 mb-2"></div>
               <div>
                 <label htmlFor="scenario-sphere" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Сфера:</label>
-                <input
-                  type="text"
-                  id="scenario-sphere"
-                  name="sphere"
-                  value={scenarioFormData.sphere}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, sphere: e.target.value })}
-                  className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
-                  required
-                  placeholder="Например: Работа, Учёба, Личная жизнь"
-                />
+                <input type="text" id="scenario-sphere" name="sphere" value={scenarioFormData.sphere} onChange={e => setScenarioFormData({ ...scenarioFormData, sphere: e.target.value })} className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm" required placeholder="Например: Работа, Учёба, Личная жизнь" />
               </div>
               <div>
                 <label htmlFor="scenario-situation" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Ситуация:</label>
-                <input
-                  type="text"
-                  id="scenario-situation"
-                  name="situation"
-                  value={scenarioFormData.situation}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, situation: e.target.value })}
-                  className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
-                  required
-                  placeholder="Например: Собеседование, Переговоры"
-                />
+                <input type="text" id="scenario-situation" name="situation" value={scenarioFormData.situation} onChange={e => setScenarioFormData({ ...scenarioFormData, situation: e.target.value })} className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm" required placeholder="Например: Собеседование, Переговоры" />
               </div>
               <div>
                 <label htmlFor="scenario-mood" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Настроение:</label>
-                <input
-                  type="text"
-                  id="scenario-mood"
-                  name="mood"
-                  value={scenarioFormData.mood}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, mood: e.target.value })}
-                  className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
-                  required
-                  placeholder="Например: Нейтральное, Позитивное, Агрессивное"
-                />
+                <input type="text" id="scenario-mood" name="mood" value={scenarioFormData.mood} onChange={e => setScenarioFormData({ ...scenarioFormData, mood: e.target.value })} className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm" required placeholder="Например: Нейтральное, Позитивное, Агрессивное" />
               </div>
               <div>
                 <label htmlFor="scenario-language" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Язык:</label>
-                <input
-                  type="text"
-                  id="scenario-language"
-                  name="language"
-                  value={scenarioFormData.language}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, language: e.target.value })}
-                  className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
-                  required
-                  placeholder="Например: Русский, Английский"
-                />
+                <input type="text" id="scenario-language" name="language" value={scenarioFormData.language} onChange={e => setScenarioFormData({ ...scenarioFormData, language: e.target.value })} className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm" required placeholder="Например: Русский, Английский" />
               </div>
               <div>
                 <label htmlFor="scenario-user-role" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Роль пользователя:</label>
-                <input
-                  type="text"
-                  id="scenario-user-role"
-                  name="user_role"
-                  value={scenarioFormData.user_role}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, user_role: e.target.value })}
-                  className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
-                  required
-                  placeholder="Например: клиент, сотрудник"
-                />
+                <input type="text" id="scenario-user-role" name="user_role" value={scenarioFormData.user_role} onChange={e => setScenarioFormData({ ...scenarioFormData, user_role: e.target.value })} className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm" required placeholder="Например: клиент, сотрудник" />
               </div>
               <div>
                 <label htmlFor="scenario-ai-role" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Роль AI:</label>
-                <input
-                  type="text"
-                  id="scenario-ai-role"
-                  name="ai_role"
-                  value={scenarioFormData.ai_role}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, ai_role: e.target.value })}
-                  className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
-                  required
-                  placeholder="Например: администратор отеля, менеджер"
-                />
+                <input type="text" id="scenario-ai-role" name="ai_role" value={scenarioFormData.ai_role} onChange={e => setScenarioFormData({ ...scenarioFormData, ai_role: e.target.value })} className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm" required placeholder="Например: администратор отеля, менеджер" />
               </div>
               <div>
                 <label htmlFor="scenario-ai-behavior" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Поведение AI:</label>
-                <textarea
-                  id="scenario-ai-behavior"
-                  name="ai_behavior"
-                  value={scenarioFormData.ai_behavior}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, ai_behavior: e.target.value })}
-                  className="w-full min-h-[48px] h-20 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm resize-none"
-                  required
-                  placeholder="Например: недовольный клиент, спокойный сотрудник"
-                ></textarea>
+                <textarea id="scenario-ai-behavior" name="ai_behavior" value={scenarioFormData.ai_behavior} onChange={e => setScenarioFormData({ ...scenarioFormData, ai_behavior: e.target.value })} className="w-full min-h-[48px] h-20 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm resize-none" required placeholder="Например: недовольный клиент, спокойный сотрудник"></textarea>
               </div>
               <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="checkbox"
-                  id="scenario-is-template"
-                  name="is_template"
-                  checked={scenarioFormData.is_template}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, is_template: e.target.checked })}
-                  className="mr-2 leading-tight accent-blue-600 dark:accent-blue-400"
-                />
+                <input type="checkbox" id="scenario-is-template" name="is_template" checked={scenarioFormData.is_template} onChange={e => setScenarioFormData({ ...scenarioFormData, is_template: e.target.checked })} className="mr-2 leading-tight accent-blue-600 dark:accent-blue-400" />
                 <label htmlFor="scenario-is-template" className="text-gray-700 dark:text-gray-300 text-base">Является шаблоном (не будет отображаться для пользователей)</label>
               </div>
               <div className="flex justify-end gap-3 mt-8">
-                <button
-                  type="button"
-                  onClick={() => setShowAddScenarioModal(false)}
-                  className="bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-black dark:text-gray-100 font-bold py-2 px-6 rounded-xl transition-colors shadow"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-xl transition-colors shadow"
-                >
-                  Добавить
-                </button>
+                <button type="button" onClick={() => setShowAddScenarioModal(false)} className="bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-black dark:text-gray-100 font-bold py-2 px-6 rounded-xl transition-colors shadow">Отмена</button>
+                <button type="submit" className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-xl transition-colors shadow">Добавить</button>
               </div>
             </form>
           </div>
@@ -1343,36 +1365,30 @@ const ModeratorPanel = () => {
       )}
       {showEditScenarioModal && currentScenario && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Редактировать сценарий: {currentScenario.name}</h2>
-              <button onClick={() => setShowEditScenarioModal(false)} className="text-gray-500 hover:text-gray-700">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-2 sm:p-6 w-full max-w-xs sm:max-w-md max-h-[90vh] overflow-y-auto relative">
+            <div className="flex justify-between items-center mb-2 sm:mb-4">
+              <h2 className="text-lg sm:text-2xl font-bold">Редактировать сценарий: {currentScenario.name}</h2>
+              <button onClick={() => setShowEditScenarioModal(false)} className="text-gray-500 hover:text-gray-700 p-1 sm:p-2">
                 <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
-            <form onSubmit={handleSaveScenarioEdit}>
-              {/* ...поля формы для редактирования сценария (аналогично add)... */}
+            <form onSubmit={handleSaveScenarioEdit} className="space-y-2 sm:space-y-4">
+              {/* ...поля формы для редактирования сценария... */}
+              <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                <button type="button" onClick={() => setShowEditScenarioModal(false)} className="bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-black dark:text-gray-100 font-bold py-2 w-full rounded transition-colors">Отмена</button>
+                <button type="submit" className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 w-full rounded transition-colors">Сохранить</button>
+              </div>
             </form>
           </div>
         </div>
       )}
       {confirmModal.show && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-sm">
-            <div className="mb-4 text-lg font-semibold text-gray-800">{confirmModal.text}</div>
-            <div className="flex justify-end gap-2">
-              <button
-                className="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded"
-                onClick={() => setConfirmModal({ show: false, onConfirm: null, text: '' })}
-              >
-                Отмена
-              </button>
-              <button
-                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                onClick={confirmModal.onConfirm}
-              >
-                Удалить
-              </button>
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-3 sm:p-6 w-full max-w-[95vw] sm:max-w-sm">
+            <div className="mb-2 sm:mb-4 text-base sm:text-lg font-semibold text-gray-800">{confirmModal.text}</div>
+            <div className="flex flex-col sm:flex-row justify-end gap-2">
+              <button className="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 w-full sm:w-auto rounded" onClick={() => setConfirmModal({ show: false, onConfirm: null, text: '' })}>Отмена</button>
+              <button className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 w-full sm:w-auto rounded" onClick={confirmModal.onConfirm}>Удалить</button>
             </div>
           </div>
         </div>
@@ -1381,4 +1397,4 @@ const ModeratorPanel = () => {
   );
 };
 
-export default ModeratorPanel; 
+export default ModeratorPanel;

@@ -12,6 +12,7 @@ import {
 } from 'chart.js';
 import { LockClosedIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
+import { motion } from 'framer-motion';
 
 ChartJS.register(
     CategoryScale,
@@ -28,7 +29,6 @@ const Profile = () => {
     name: '',
     email: '',
     avatar: '',
-    level: 0,
     points: 0,
     status: '',
     role: '',
@@ -195,155 +195,111 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-10 px-2 md:px-0 transition-colors">
-      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-4 sm:py-10 px-0.5 sm:px-2 md:px-0 transition-colors overflow-x-hidden">
+      <div className="max-w-3xl mx-auto bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-2 sm:p-6 transition-colors">
         {/* Кнопка обновления профиля */}
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end mb-1 sm:mb-4">
           <button
             onClick={fetchProfileData}
             disabled={refreshing}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors disabled:opacity-60"
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded transition-colors disabled:opacity-60 text-xs sm:text-base min-w-[90px] sm:min-w-[120px]"
           >
             {refreshing ? 'Обновление...' : 'Обновить профиль'}
           </button>
         </div>
         {/* Верхний блок: аватар, имя, статус, баллы, роль */}
-        <div className="flex flex-col md:flex-row items-center md:items-start md:space-x-8 mb-8">
-          <div className="flex-shrink-0 mb-4 md:mb-0">
-            <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-blue-400 to-green-400 dark:from-blue-900 dark:to-green-800 flex items-center justify-center text-4xl font-bold text-white shadow-lg">
+        <div className="flex flex-col md:flex-row items-center md:items-start md:space-x-6 mb-4 sm:mb-8">
+          <div className="flex-shrink-0 mb-2 md:mb-0">
+            <div className="h-14 w-14 sm:h-20 sm:w-20 rounded-full bg-gradient-to-tr from-blue-400 to-green-400 dark:from-blue-900 dark:to-green-800 flex items-center justify-center text-lg sm:text-2xl font-bold text-white shadow-lg">
               {user.avatar ? (
-                <img src={user.avatar} alt="avatar" className="h-28 w-28 rounded-full object-cover" />
+                <img src={user.avatar} alt="avatar" className="h-14 w-14 sm:h-20 sm:w-20 rounded-full object-cover" />
               ) : (
                 user.name.split(' ').map(n => n[0]).join('').toUpperCase()
               )}
             </div>
           </div>
           <div className="flex-1 text-center md:text-left">
-            <h1 className="text-3xl font-extrabold mb-1 text-gray-900 dark:text-gray-100 transition-colors">{user.name}</h1>
-            <p className="text-gray-500 dark:text-gray-300 mb-2 transition-colors">{user.email}</p>
-            <div className="flex flex-wrap gap-2 items-center justify-center md:justify-start text-sm mt-2">
-              <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200 px-3 py-1 rounded-full transition-colors">{user.status}</span>
-              <span className="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200 px-3 py-1 rounded-full transition-colors">Роль: {user.role ? user.role.toUpperCase() : 'N/A'}</span>
+            <h1 className="text-lg sm:text-2xl font-extrabold mb-0.5 text-gray-900 dark:text-gray-100 transition-colors break-words leading-tight">{user.name}</h1>
+            <p className="text-gray-500 dark:text-gray-300 mb-1 transition-colors text-xs sm:text-base break-words">{user.email}</p>
+            <div className="flex flex-wrap gap-1 items-center justify-center md:justify-start text-xs sm:text-sm mt-1">
+              <span className="bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-200 px-2 py-0.5 rounded-full transition-colors">{user.status}</span>
+              <span className="bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-200 px-2 py-0.5 rounded-full transition-colors">Роль: {user.role ? user.role.toUpperCase() : 'N/A'}</span>
             </div>
           </div>
         </div>
 
-        {/* Блок статистики по времени */}
-        {timeStats && (
-          <div className="bg-blue-50 dark:bg-blue-900 rounded-xl shadow p-6 mb-8">
-            <h2 className="text-xl font-semibold mb-4 text-blue-900 dark:text-blue-100">Статистика по времени</h2>
-            <div className="flex flex-wrap gap-6 mb-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-700 dark:text-blue-200">{Math.floor(timeStats.bestTime/60)}:{('0'+(timeStats.bestTime%60)).slice(-2)}</div>
-                <div className="text-gray-600 dark:text-gray-200">Лучшее время</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-700 dark:text-green-200">{Math.floor(timeStats.averageTime/60)}:{('0'+(timeStats.averageTime%60)).slice(-2)}</div>
-                <div className="text-gray-600 dark:text-gray-200">Среднее время</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-200">{Math.floor(timeStats.lastTime/60)}:{('0'+(timeStats.lastTime%60)).slice(-2)}</div>
-                <div className="text-gray-600 dark:text-gray-200">Последнее время</div>
-              </div>
-            </div>
-            {timeStats.byScenario && timeStats.byScenario.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-sm mt-2">
-                  <thead>
-                    <tr className="text-gray-700 dark:text-gray-200">
-                      <th className="px-2 py-1 text-left">Сценарий</th>
-                      <th className="px-2 py-1">Лучшее</th>
-                      <th className="px-2 py-1">Среднее</th>
-                      <th className="px-2 py-1">Последнее</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {timeStats.byScenario.map(s => (
-                      <tr key={s.scenario_id} className="border-b border-gray-200 dark:border-gray-700">
-                        <td className="px-2 py-1 font-semibold">{s.name}</td>
-                        <td className="px-2 py-1">{Math.floor(s.best_time/60)}:{('0'+(s.best_time%60)).slice(-2)}</td>
-                        <td className="px-2 py-1">{Math.floor(s.average_time/60)}:{('0'+(s.average_time%60)).slice(-2)}</td>
-                        <td className="px-2 py-1">{Math.floor(s.last_time/60)}:{('0'+(s.last_time%60)).slice(-2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* Новый блок статистики */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl shadow p-6 text-center transition-colors">
-            <div className="text-3xl font-bold mb-2 text-blue-600 dark:text-blue-300">{progress && progress.length ? progress.length : 0}</div>
-            <div className="text-gray-600 dark:text-gray-200 text-lg font-medium">Тренировок</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-6 mb-4 sm:mb-8">
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl shadow p-2 text-center transition-colors">
+            <div className="text-lg sm:text-3xl font-bold mb-0.5 sm:mb-2 text-blue-600 dark:text-blue-300">{progress && progress.length ? progress.length : 0}</div>
+            <div className="text-gray-600 dark:text-gray-200 text-xs sm:text-lg font-medium">Тренировок</div>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl shadow p-6 text-center transition-colors">
-            <div className="text-3xl font-bold mb-2 text-green-600 dark:text-green-300">{totalAchievements}</div>
-            <div className="text-gray-600 dark:text-gray-200 text-lg font-medium">Достижений</div>
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl shadow p-2 text-center transition-colors">
+            <div className="text-lg sm:text-3xl font-bold mb-0.5 sm:mb-2 text-green-600 dark:text-green-300">{totalAchievements}</div>
+            <div className="text-gray-600 dark:text-gray-200 text-xs sm:text-lg font-medium">Достижений</div>
           </div>
-          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl shadow p-6 text-center transition-colors">
-            <div className="text-3xl font-bold mb-2 text-yellow-600 dark:text-yellow-300">{totalPoints}</div>
-            <div className="text-gray-600 dark:text-gray-200 text-lg font-medium">Баллы</div>
+          <div className="bg-gray-50 dark:bg-gray-700 rounded-xl shadow p-2 text-center transition-colors">
+            <div className="text-lg sm:text-3xl font-bold mb-0.5 sm:mb-2 text-yellow-600 dark:text-yellow-300">{totalPoints}</div>
+            <div className="text-gray-600 dark:text-gray-200 text-xs sm:text-lg font-medium">Баллы</div>
           </div>
         </div>
 
         {/* Достижения */}
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100 transition-colors">Достижения</h2>
-          <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
+        <div className="mb-4 sm:mb-8">
+          <h2 className="text-sm sm:text-xl font-semibold mb-1 sm:mb-4 text-gray-900 dark:text-gray-100 transition-colors">Достижения</h2>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 mb-1 sm:mb-4">
             <input
               type="text"
               placeholder="Поиск по названию или описанию"
-              className="border border-gray-300 dark:border-gray-600 rounded-[8px] px-3 py-1 focus:outline-none focus:border-[#0D47A1] w-full md:w-64 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
+              className="border border-gray-300 dark:border-gray-600 rounded-[8px] px-2 py-1 focus:outline-none focus:border-[#0D47A1] w-full sm:w-64 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 text-xs sm:text-base"
               value={achievementSearch}
               onChange={e => setAchievementSearch(e.target.value)}
             />
             <button
-              className="border border-gray-300 dark:border-gray-600 rounded-[8px] px-3 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-semibold hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
-              style={{ minWidth: 180 }}
+              className="border border-gray-300 dark:border-gray-600 rounded-[8px] px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-semibold hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors text-xs sm:text-base min-w-[90px] sm:min-w-[120px]"
               disabled
             >
               Сортировать по названию
             </button>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-60 overflow-y-auto pr-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 sm:gap-4 max-h-44 sm:max-h-60 overflow-y-auto pr-1 sm:pr-4">
             {filteredAchievements.length > 0 ? (
               filteredAchievements.map((ach) => (
-                <div
+                <motion.div
                   key={ach.id}
+                  whileHover={{ scale: 1.04 }}
+                  whileTap={{ scale: 0.98 }}
                   className={
                     `achievement-card ${ach.unlocked ? 'unlocked' : 'locked'} ` +
-                    'rounded-xl p-4 text-center shadow-lg transition cursor-pointer flex flex-col items-center ' +
+                    'rounded-xl p-1.5 sm:p-4 text-center shadow-lg transition cursor-pointer flex flex-col items-center ' +
                     (ach.unlocked
                       ? 'bg-gradient-to-br from-[#232b3a] to-[#4ade80] border-2 border-green-400 hover:shadow-green-400/40'
                       : 'bg-[#232b3a]/80 border border-gray-600 hover:shadow-lg')
                   }
-                  style={{ minHeight: 160 }}
+                  style={{ minHeight: 80 }}
                   onClick={() => setSelectedAchievement(ach)}
                 >
                   {ach.unlocked && ach.icon_url ? (
-                    <img src={ach.icon_url} alt="achievement icon" className="w-12 h-12 mx-auto mb-2 drop-shadow-lg" />
+                    <img src={ach.icon_url} alt="achievement icon" className="w-7 h-7 sm:w-12 sm:h-12 mx-auto mb-1 sm:mb-2 drop-shadow-lg" />
                   ) : (
-                    <LockClosedIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+                    <LockClosedIcon className="w-7 h-7 sm:w-12 sm:h-12 mx-auto mb-1 sm:mb-2 text-gray-400" />
                   )}
                   <div className={
-                    'font-bold mb-1 ' + (ach.unlocked ? 'text-white' : 'text-gray-300')
+                    'font-bold mb-0.5 ' + (ach.unlocked ? 'text-white' : 'text-gray-300')
                   }>{ach.name}</div>
                   {/* Баллы за достижение */}
                   {ach.unlocked ? (
-                    <div className="text-xs font-semibold mb-1 text-yellow-200">
+                    <div className="text-xs font-semibold mb-0.5 text-yellow-200">
                       +{ach.points || 0} баллов
                     </div>
                   ) : (
-                    <div className="text-xs font-semibold mb-1 text-yellow-400">
+                    <div className="text-xs font-semibold mb-0.5 text-yellow-400">
                       Можно получить: +{ach.points || 0} баллов
                     </div>
                   )}
                   {/* Требования */}
                     <div className={
-                      'text-xs mb-1 ' + (ach.unlocked ? 'text-blue-100' : 'text-blue-300')
+                      'text-xs mb-0.5 ' + (ach.unlocked ? 'text-blue-100' : 'text-blue-300')
                     }>
                     {
                       !ach.requirements || !ach.requirements.type || ach.requirements.type === 'none'
@@ -356,17 +312,17 @@ const Profile = () => {
                     }
                     </div>
                   <div className={
-                    'text-sm ' + (ach.unlocked ? 'text-green-100' : 'text-gray-400')
+                    'text-xs sm:text-sm ' + (ach.unlocked ? 'text-green-100' : 'text-gray-400')
                   }>{ach.description}</div>
                   {ach.unlocked && ach.achieved_at && (
-                    <div className="text-green-200 text-xs mt-1">
+                    <div className="text-green-200 text-xs mt-0.5">
                       Получено: {new Date(ach.achieved_at).toLocaleDateString()}
                     </div>
                   )}
-                </div>
+                </motion.div>
               ))
             ) : (
-              <div className="col-span-full text-center text-gray-500">
+              <div className="col-span-full text-center text-gray-500 text-xs sm:text-base">
                 Пока нет достижений.
               </div>
             )}
@@ -376,43 +332,43 @@ const Profile = () => {
         {/* Модалка подробной информации о достижении */}
         {selectedAchievement && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-sm dark:text-gray-100">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-bold">{selectedAchievement.name}</h3>
-                <button onClick={() => setSelectedAchievement(null)} className="text-gray-500 hover:text-gray-700">
-                  <span className="text-2xl">×</span>
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-2 sm:p-6 w-full max-w-[95vw] sm:max-w-sm dark:text-gray-100 text-xs sm:text-base max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center mb-2 sm:mb-4">
+                <h3 className="text-base sm:text-xl font-bold">{selectedAchievement.name}</h3>
+                <button onClick={() => setSelectedAchievement(null)} className="text-gray-500 hover:text-gray-700 p-1 sm:p-2" aria-label="Закрыть модальное окно" tabIndex={0}>
+                  <span className="text-xl sm:text-2xl">×</span>
                 </button>
               </div>
               {selectedAchievement.icon_url && (
-                <img src={selectedAchievement.icon_url} alt="icon" className="w-16 h-16 mx-auto mb-4" />
+                <img src={selectedAchievement.icon_url} alt="icon" className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-2 sm:mb-4" />
               )}
-              {/* Баллы за достижение */}
-              <div className="text-sm font-semibold mb-2 text-yellow-500 dark:text-yellow-300">+{selectedAchievement.points || 0} баллов</div>
-              {/* Требования */}
+              <div className="text-xs sm:text-sm font-semibold mb-1 sm:mb-2 text-yellow-500 dark:text-yellow-300">+{selectedAchievement.points || 0} баллов</div>
               {selectedAchievement.requirements && selectedAchievement.requirements.type && selectedAchievement.requirements.type !== 'none' && (
-                <div className="text-sm mb-2 text-blue-700 dark:text-blue-200">
+                <div className="text-xs sm:text-sm mb-1 sm:mb-2 text-blue-700 dark:text-blue-200">
                   Требование: {selectedAchievement.requirements.value}
                 </div>
               )}
-              <div className="mb-2 text-gray-700">{selectedAchievement.description}</div>
+              <div className="mb-1 sm:mb-2 text-gray-700 text-xs sm:text-base">{selectedAchievement.description}</div>
               {selectedAchievement.unlocked && selectedAchievement.achieved_at && (
-                <div className="text-gray-400 text-xs mb-2">
+                <div className="text-gray-400 text-xs mb-1 sm:mb-2">
                   Получено: {new Date(selectedAchievement.achieved_at).toLocaleDateString()}
                 </div>
               )}
-              <button onClick={() => setSelectedAchievement(null)} className="mt-4 w-full bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Закрыть</button>
+              <div className="flex justify-end mt-2">
+                <button onClick={() => setSelectedAchievement(null)} className="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 w-full sm:w-auto rounded transition-colors">Закрыть</button>
+              </div>
             </div>
           </div>
         )}
 
         {/* График прогресса */}
-        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 md:p-8 text-center mb-8 transition-colors">
-          <h2 className="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-100">Динамика тренировок (30 дней)</h2>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-2">
-            <span className="text-sm text-gray-500 dark:text-gray-300">Текущий стрик: <span className="font-bold text-blue-700 dark:text-blue-400">{currentStreak}</span> дней</span>
-            <span className="text-sm text-gray-500 dark:text-gray-300">Максимальный стрик: <span className="font-bold text-green-700 dark:text-green-400">{maxStreak}</span> дней</span>
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-2 md:p-6 text-center mb-4 sm:mb-8 transition-colors overflow-x-auto">
+          <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4 text-gray-700 dark:text-gray-100">Динамика тренировок (30 дней)</h2>
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-2 sm:mb-4 gap-1">
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-300">Текущий стрик: <span className="font-bold text-blue-700 dark:text-blue-400">{currentStreak}</span> дней</span>
+            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-300">Максимальный стрик: <span className="font-bold text-green-700 dark:text-green-400">{maxStreak}</span> дней</span>
           </div>
-          <div className="h-64">
+          <div className="h-40 sm:h-64 min-w-[320px]">
             {progressLoading ? (
               <div className="flex items-center justify-center h-full text-gray-400">Загрузка...</div>
             ) : progressError ? (
@@ -449,51 +405,16 @@ const Profile = () => {
           </div>
         </div>
 
-        {/* График прогресса по времени */}
-        {timeHistory && timeHistory.length > 1 && (
-          <div className="bg-blue-100 dark:bg-blue-800 rounded-xl p-4 md:p-8 text-center mb-8 transition-colors">
-            <h2 className="text-xl font-semibold mb-4 text-blue-900 dark:text-blue-100">Прогресс по времени (минуты:секунды)</h2>
-            <div className="h-64">
-              <Line
-                data={{
-                  labels: timeHistory.map(item => new Date(item.date).toLocaleDateString()),
-                  datasets: [
-                    {
-                      label: 'Время завершения диалога',
-                      data: timeHistory.map(item => Math.round(item.duration/6)/10), // минуты с десятыми
-                      borderColor: 'rgb(37,99,235)',
-                      backgroundColor: 'rgba(37,99,235,0.2)',
-                      tension: 0.3,
-                      fill: true,
-                      pointRadius: 4,
-                      pointBackgroundColor: 'rgb(37,99,235)',
-                    },
-                  ],
-                }}
-                options={{
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false },
-                  },
-                  scales: {
-                    x: { title: { display: true, text: 'Дата' } },
-                    y: { title: { display: true, text: 'Время (мин)' }, beginAtZero: true },
-                  },
-                }}
-              />
-            </div>
-          </div>
-        )}
 
         {/* История активности */}
-        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-4 md:p-8 text-center text-gray-700 dark:text-gray-100 text-lg transition-colors">
-          <h2 className="text-xl font-semibold mb-4">История активности</h2>
+        <div className="bg-gray-100 dark:bg-gray-800 rounded-xl p-2 md:p-6 text-center text-gray-700 dark:text-gray-100 text-xs sm:text-lg transition-colors">
+          <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4">История активности</h2>
           {activityLoading ? (
             <div className="text-gray-400">Загрузка...</div>
           ) : activity.length > 0 ? (
-            <ul className="space-y-2 text-left max-h-48 overflow-y-auto">
+            <ul className="space-y-1 sm:space-y-2 text-left max-h-32 sm:max-h-48 overflow-y-auto pr-1">
               {activity.map((item, idx) => (
-                <li key={idx} className="border-b border-gray-200 dark:border-gray-700 pb-2">
+                <li key={idx} className="border-b border-gray-200 dark:border-gray-700 pb-1 sm:pb-2">
                   <span className="font-semibold">{item.date}:</span> {item.action}
                 </li>
               ))}

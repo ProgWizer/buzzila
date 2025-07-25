@@ -164,57 +164,75 @@ const Scenarios = () => {
 
   return (
     <>
-      <style>{noScrollbarStyle}</style>
-      <div className="min-h-screen bg-[#F1F8FF] dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 py-12 flex flex-col items-center transition-colors">
-        <h1 className="text-[64px] font-bold text-black dark:text-white mb-4 text-center font-['Inter'] transition-colors">Сценарии тренировок</h1>
-        <p className="text-lg text-gray-700 dark:text-gray-300 mb-10 text-center transition-colors">Выберите параметры для вашей тренировки</p>
+      <style>{`
+  .panel-table th, .panel-table td { padding: 13px 14px; font-size: 15px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+  .panel-table th { font-weight: 700; }
+  .panel-table { border-radius: 12px; overflow: hidden; }
+  .panel-btn { border-radius: 10px; font-weight: 700; font-size: 15px; padding: 14px 0; min-width: 120px; min-height: 44px; }
+  .panel-pagination { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+  .panel-pagination button { padding: 10px 18px; border-radius: 8px; font-size: 15px; font-weight: 600; min-height: 40px; }
+  input, textarea { font-size: 15px !important; min-height: 44px; }
+  @media (max-width: 640px) {
+    .panel-btn { font-size: 14px !important; padding: 12px 0 !important; min-width: 90px !important; min-height: 40px !important; }
+    .panel-table th, .panel-table td { padding: 9px 7px; font-size: 13.5px; max-width: 90px; }
+    .panel-pagination button { padding: 7px 12px; font-size: 13.5px; min-height: 36px; }
+    input, textarea { font-size: 13.5px !important; min-height: 38px; }
+  }
+  .panel-table th, .panel-table td { color: #1a202c; }
+  .dark .panel-table th, .dark .panel-table td { color: #f3f4f6; }
+`}</style>
+      <div className="min-h-screen bg-[#F1F8FF] dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 py-8 sm:py-12 flex flex-col items-center transition-colors">
+        <h1 className="text-lg xs:text-2xl sm:text-4xl md:text-5xl lg:text-[48px] font-bold text-black dark:text-white mb-1 sm:mb-4 text-center font-['Inter'] transition-colors break-words leading-tight drop-shadow-lg">Сценарии тренировок</h1>
+        <p className="text-xs sm:text-base md:text-lg text-gray-700 dark:text-gray-300 mb-3 sm:mb-10 text-center break-words">Выберите параметры для вашей тренировки</p>
 
         {scenarios.length === 0 ? (
-          <div className="w-full max-w-4xl px-4 text-center text-gray-500 dark:text-gray-300 text-2xl transition-colors">
+          <div className="w-full max-w-4xl px-4 text-center text-gray-500 dark:text-gray-300 text-lg sm:text-2xl transition-colors">
             Скоро здесь появятся новые сценарии!
           </div>
         ) : (
-          <div className="w-full max-w-4xl px-4">
+          <div className="w-full max-w-4xl px-0.5 sm:px-4">
             {/* Секция выбора сферы */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-blue-700 dark:text-blue-300 mb-3">Сфера</h2>
+            <div className="mb-4 sm:mb-12">
+              <h2 className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-300 mb-1 sm:mb-3">Сфера</h2>
               <div className="relative flex items-center">
                 <span className="scroll-shadow-left" />
                 <button
                   onClick={() => scrollContainer('left', 'spheres-container')}
-                  className="absolute left-0 z-10 p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
+                  className="absolute left-0 z-10 p-1.5 sm:p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
+                  aria-label="Прокрутить влево"
                 >
-                  <ChevronLeftIcon className="w-6 h-6 text-gray-600 dark:text-gray-200" />
+                  <ChevronLeftIcon className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 dark:text-gray-200" />
                 </button>
                 <div
                   id="spheres-container"
-                  className="flex overflow-x-scroll no-scrollbar py-2 space-x-4 pr-10 pl-10 relative"
+                  className="flex overflow-x-scroll no-scrollbar py-1.5 sm:py-2 space-x-1.5 sm:space-x-4 pr-6 sm:pr-10 pl-6 sm:pl-10 relative"
                 >
                   {uniqueSpheres.length === 0 ? (
-                    <p className="text-gray-500 dark:text-gray-300 text-lg transition-colors">Нет доступных сфер. Добавьте их в админ-панели.</p>
+                    <p className="text-gray-500 dark:text-gray-300 text-base sm:text-lg transition-colors">Нет доступных сфер. Добавьте их в админ-панели.</p>
                   ) : (
                     uniqueSpheres.map(sphere => (
                       <motion.div
                         key={sphere.id}
                         whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className={`flex-none p-6 border-2 border-transparent rounded-2xl shadow-lg cursor-pointer transition-all duration-200 transition-colors ${
+                        whileTap={{ scale: 0.97 }}
+                        className={`flex-none px-2.5 py-2 sm:p-6 border-2 border-transparent rounded-2xl shadow-lg cursor-pointer transition-all duration-200 transition-colors text-center min-w-[90px] sm:min-w-[160px] ${
                           selectedSphere === sphere.name
                             ? 'bg-[#e0edff] dark:bg-blue-700 text-blue-900 dark:text-white border-blue-500'
                             : 'bg-white dark:bg-gray-800 text-blue-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-700'
                         }`}
                         onClick={() => handleSphereSelect(sphere.name)}
                       >
-                        <p className="text-lg font-medium text-blue-700 dark:text-blue-300">{sphere.name}</p>
+                        <p className="text-xs sm:text-lg font-medium text-blue-700 dark:text-blue-300 break-words">{sphere.name}</p>
                       </motion.div>
                     ))
                   )}
                 </div>
                 <button
                   onClick={() => scrollContainer('right', 'spheres-container')}
-                  className="absolute right-0 z-10 p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
+                  className="absolute right-0 z-10 p-1.5 sm:p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
+                  aria-label="Прокрутить вправо"
                 >
-                  <ChevronRightIcon className="w-6 h-6 text-gray-600 dark:text-gray-200" />
+                  <ChevronRightIcon className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 dark:text-gray-200" />
                 </button>
                 <span className="scroll-shadow-right" />
               </div>
@@ -222,45 +240,47 @@ const Scenarios = () => {
 
             {/* Секция выбора ситуации (появляется после выбора сферы) */}
             {selectedSphere && situationsBySphere[selectedSphere] && (
-              <div className="mb-12">
-                <h2 className="text-2xl font-bold text-blue-700 dark:text-blue-300 mb-3">Ситуация</h2>
+              <div className="mb-4 sm:mb-12">
+                <h2 className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-300 mb-1 sm:mb-3">Ситуация</h2>
                 <div className="relative flex items-center">
                   <span className="scroll-shadow-left" />
                   <button
                     onClick={() => scrollContainer('left', 'situations-container')}
-                    className="absolute left-0 z-10 p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
+                    className="absolute left-0 z-10 p-1.5 sm:p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
+                    aria-label="Прокрутить влево"
                   >
-                    <ChevronLeftIcon className="w-6 h-6 text-gray-600 dark:text-gray-200" />
+                    <ChevronLeftIcon className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 dark:text-gray-200" />
                   </button>
                   <div
                     id="situations-container"
-                    className="flex overflow-x-scroll no-scrollbar py-2 space-x-4 pr-10 pl-10 relative"
+                    className="flex overflow-x-scroll no-scrollbar py-1.5 sm:py-2 space-x-1.5 sm:space-x-4 pr-6 sm:pr-10 pl-6 sm:pl-10 relative"
                   >
                     {situationsBySphere[selectedSphere].length === 0 ? (
-                      <p className="text-gray-500 dark:text-gray-300 text-lg transition-colors">Нет доступных ситуаций для этой сферы.</p>
+                      <p className="text-gray-500 dark:text-gray-300 text-base sm:text-lg transition-colors">Нет доступных ситуаций для этой сферы.</p>
                     ) : (
                       situationsBySphere[selectedSphere].map(situation => (
                         <motion.div
                           key={situation.id}
                           whileHover={{ scale: 1.05 }}
-                          whileTap={{ scale: 0.95 }}
-                          className={`flex-none p-6 border-2 border-transparent rounded-2xl shadow-lg cursor-pointer transition-all duration-200 transition-colors ${
+                          whileTap={{ scale: 0.97 }}
+                          className={`flex-none px-2.5 py-2 sm:p-6 border-2 border-transparent rounded-2xl shadow-lg cursor-pointer transition-all duration-200 transition-colors text-center min-w-[90px] sm:min-w-[160px] ${
                             selectedSituation === situation.name
                               ? 'bg-[#e0edff] dark:bg-blue-700 text-blue-900 dark:text-white border-blue-500'
                               : 'bg-white dark:bg-gray-800 text-blue-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-700'
                           }`}
                           onClick={() => setSelectedSituation(situation.name)}
                         >
-                          <p className="text-lg font-medium text-blue-700 dark:text-blue-300">{situation.name}</p>
+                          <p className="text-xs sm:text-lg font-medium text-blue-700 dark:text-blue-300 break-words">{situation.name}</p>
                         </motion.div>
                       ))
                     )}
                   </div>
                   <button
                     onClick={() => scrollContainer('right', 'situations-container')}
-                    className="absolute right-0 z-10 p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
+                    className="absolute right-0 z-10 p-1.5 sm:p-2 bg-white dark:bg-gray-800 rounded-full shadow-md hover:bg-gray-100 dark:hover:bg-gray-700 focus:outline-none transition-colors"
+                    aria-label="Прокрутить вправо"
                   >
-                    <ChevronRightIcon className="w-6 h-6 text-gray-600 dark:text-gray-200" />
+                    <ChevronRightIcon className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600 dark:text-gray-200" />
                   </button>
                   <span className="scroll-shadow-right" />
                 </div>
@@ -268,12 +288,12 @@ const Scenarios = () => {
             )}
 
             {/* Секция выбора настроения */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-blue-700 dark:text-blue-300 mb-3">Настроение собеседника</h2>
+            <div className="mb-6 sm:mb-12 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+              <h2 className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-300 mb-0.5 sm:mb-0 min-w-[90px] sm:min-w-[120px]">Настроение</h2>
               <select
                 value={selectedMood}
                 onChange={(e) => setSelectedMood(e.target.value)}
-                className="block w-full max-w-md p-4 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800 text-blue-900 dark:text-gray-100 text-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 shadow-sm transition-colors"
+                className="block w-full max-w-md p-2 sm:p-4 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800 text-blue-900 dark:text-gray-100 text-xs sm:text-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 shadow-sm transition-colors"
               >
                 {uniqueMoods.map(mood => (
                   <option key={mood.value} value={mood.value}>{mood.label}</option>
@@ -282,12 +302,12 @@ const Scenarios = () => {
             </div>
 
             {/* Секция выбора языка */}
-            <div className="mb-12">
-              <h2 className="text-2xl font-bold text-blue-700 dark:text-blue-300 mb-3">Язык</h2>
+            <div className="mb-6 sm:mb-12 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+              <h2 className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-300 mb-0.5 sm:mb-0 min-w-[90px] sm:min-w-[120px]">Язык</h2>
               <select
                 value={selectedLanguage}
                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                className="block w-full max-w-md p-4 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800 text-blue-900 dark:text-gray-100 text-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 shadow-sm transition-colors"
+                className="block w-full max-w-md p-2 sm:p-4 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800 text-blue-900 dark:text-gray-100 text-xs sm:text-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 shadow-sm transition-colors"
               >
                 {uniqueLanguages.map(lang => (
                   <option key={lang.value} value={lang.value}>{lang.label}</option>
@@ -296,24 +316,24 @@ const Scenarios = () => {
             </div>
 
             {/* Секция выбора режима "на время" */}
-            <div className="mb-12 flex items-center">
+            <div className="mb-8 sm:mb-12 flex items-center gap-3">
               <input
                 type="checkbox"
                 id="isTimed"
                 checked={isTimed}
                 onChange={(e) => setIsTimed(e.target.checked)}
-                className="mr-3 h-6 w-6 accent-blue-600 dark:accent-blue-400 rounded focus:ring-blue-400 border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800"
+                className="mr-2 h-4 w-4 sm:h-6 sm:w-6 accent-blue-600 dark:accent-blue-400 rounded focus:ring-blue-400 border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800"
               />
-              <label htmlFor="isTimed" className="text-lg font-medium text-blue-700 dark:text-blue-300">Тренировка на время</label>
+              <label htmlFor="isTimed" className="text-xs sm:text-lg font-medium text-blue-700 dark:text-blue-300 select-none">Тренировка на время</label>
             </div>
 
             {/* Кнопка "Начать диалог" */}
-            <div className="text-center mt-16">
+            <div className="text-center mt-4 sm:mt-16">
               <motion.button
                 whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileTap={{ scale: 0.97 }}
                 onClick={handleStartDialog}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-12 rounded-xl text-2xl shadow-xl transition-all duration-200"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 xs:py-2 sm:py-4 px-3 xs:px-4 sm:px-12 rounded-xl text-xs xs:text-lg sm:text-2xl shadow-xl transition-all duration-200 w-full max-w-[120px] xs:max-w-xs sm:max-w-md min-w-[90px]"
               >
                 Начать диалог
               </motion.button>

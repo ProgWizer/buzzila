@@ -1097,8 +1097,8 @@ const Admin = () => {
   return (
     <div className="min-h-screen bg-[#F1F8FF] dark:bg-gradient-to-br dark:from-gray-900 dark:to-gray-950 py-12 flex flex-col items-center transition-all">
       {/* Хлебные крошки */}
-      <nav className="w-full max-w-[1200px] mb-4 text-sm">
-        <ol className="flex items-center space-x-2 text-gray-400 dark:text-gray-400">
+      <nav className="w-full max-w-[1200px] mb-2 sm:mb-4 text-xs sm:text-sm">
+        <ol className="flex flex-wrap items-center space-x-1 sm:space-x-2 text-gray-400 dark:text-gray-400 break-words">
           <li>
             <Link to="/" className="hover:underline text-blue-400 dark:text-blue-300">Главная</Link>
           </li>
@@ -1107,56 +1107,56 @@ const Admin = () => {
         </ol>
       </nav>
       {/* Крупный заголовок */}
-      <h1 className="text-4xl md:text-5xl lg:text-[64px] font-bold text-gray-900 dark:text-white mb-4 text-center font-['Inter'] drop-shadow-lg transition-colors">Админ-панель</h1>
-      <p className="text-base md:text-lg text-gray-700 dark:text-gray-300 mb-10 text-center">Управление сайтом</p>
+      <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-[48px] font-bold text-gray-900 dark:text-white mb-2 sm:mb-4 text-center font-['Inter'] drop-shadow-lg transition-colors break-words leading-tight">Админ-панель</h1>
+      <p className="text-sm sm:text-base md:text-lg text-gray-700 dark:text-gray-300 mb-6 sm:mb-10 text-center break-words">Управление сайтом</p>
       {/* Основные карточки */}
-      <div className="w-full max-w-full md:max-w-[900px] flex flex-col gap-8 mb-12 px-2 md:px-0">
+      <div className="w-full max-w-full md:max-w-[900px] flex flex-col gap-6 sm:gap-8 mb-8 sm:mb-12 px-1 sm:px-2 md:px-0">
         {/* Карточка пользователей */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-8 mb-6 w-full max-w-[900px] transition-all">
-          <div className="flex items-center mb-6">
-            <UserGroupIcon className="w-12 h-12 text-blue-800 dark:text-blue-300 mr-4" />
-            <span className="text-3xl font-extrabold text-blue-900 dark:text-blue-200">Пользователи</span>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-2 sm:p-4 mb-2 sm:mb-4 w-full max-w-full md:max-w-[900px] transition-all">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-2 sm:mb-4 gap-1 sm:gap-0">
+            <UserGroupIcon className="w-6 h-6 sm:w-10 sm:h-10 text-blue-800 dark:text-blue-300 mr-0 sm:mr-4" />
+            <span className="text-lg sm:text-2xl font-extrabold text-blue-900 dark:text-blue-200">Пользователи</span>
           </div>
           {/* Фильтр */}
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-base text-gray-700 dark:text-gray-300 font-light">Фильтр</span>
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-2 sm:mb-3 gap-1 sm:gap-0">
+            <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-light">Фильтр</span>
             <input
               type="text"
               placeholder="Поиск по имени или email"
-              className="border border-gray-300 dark:border-gray-700 rounded-[8px] px-3 py-1 focus:outline-none focus:border-[#0D47A1] dark:focus:border-blue-400 w-64 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors"
+              className="border border-gray-300 dark:border-gray-700 rounded-[8px] px-2 py-2 focus:outline-none focus:border-[#0D47A1] dark:focus:border-blue-400 w-full sm:w-48 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors text-xs sm:text-base"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           {/* Таблица */}
-          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-4">
-            <table className="min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs md:text-sm transition-colors">
+          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-2">
+            <table className="min-w-[500px] sm:min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs sm:text-sm transition-colors">
               <thead>
                 <tr className="bg-[#F1F8FF] dark:bg-gray-700 text-[#0D47A1] dark:text-blue-200 text-left">
-                  <th className="px-4 py-2 font-semibold">Имя</th>
-                  <th className="px-4 py-2 font-semibold">Email</th>
-                  <th className="px-4 py-2 font-semibold">Роль</th>
-                  <th className="px-4 py-2 font-semibold">Последняя активность</th>
-                  <th className="px-4 py-2 font-semibold">Действия</th>
+                  <th className="px-2 py-2 font-semibold">Имя</th>
+                  <th className="px-2 py-2 font-semibold">Email</th>
+                  <th className="px-2 py-2 font-semibold hidden xs:table-cell">Роль</th>
+                  <th className="px-2 py-2 font-semibold hidden sm:table-cell">Последняя активность</th>
+                  <th className="px-2 py-2 font-semibold">Действия</th>
                 </tr>
               </thead>
               <tbody>
                 {currentUsers.map((user, idx) => (
                   <tr key={user.id} className={`border-t border-gray-100 dark:border-gray-700 transition ${idx % 2 === 0 ? 'bg-gray-50 dark:bg-gray-900/40' : 'bg-white dark:bg-gray-800/80'} hover:bg-[#F1F8FF] dark:hover:bg-gray-700`}>
-                    <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{user.username}</td>
-                    <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{user.email}</td>
-                    <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{user.role}</td>
-                    <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Неизвестно'}</td>
-                    <td className="px-4 py-2">
+                    <td className="px-2 py-2 text-gray-900 dark:text-gray-100">{user.username}</td>
+                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300">{user.email}</td>
+                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300 hidden xs:table-cell">{user.role}</td>
+                    <td className="px-2 py-2 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Неизвестно'}</td>
+                    <td className="px-2 py-2">
                       <button 
                         onClick={() => handleEditClick(user)}
-                        className="bg-[#0D47A1] dark:bg-blue-700 text-white rounded-[8px] px-3 py-1 mr-2 hover:bg-[#1565c0] dark:hover:bg-blue-800 transition-all shadow focus:ring-2 focus:ring-blue-400"
+                        className="bg-[#0D47A1] dark:bg-blue-700 text-white rounded-[8px] px-2 py-1 mr-1 hover:bg-[#1565c0] dark:hover:bg-blue-800 transition-all shadow focus:ring-2 focus:ring-blue-400 text-xs"
                       >
                         <PencilIcon className="w-4 h-4 inline" />
                       </button>
                       <button 
                         onClick={() => handleDeleteClick(user.id)}
-                        className="bg-red-500 dark:bg-red-700 text-white rounded-[8px] px-3 py-1 hover:bg-red-700 dark:hover:bg-red-800 transition-all shadow focus:ring-2 focus:ring-red-400"
+                        className="bg-red-500 dark:bg-red-700 text-white rounded-[8px] px-2 py-1 hover:bg-red-700 dark:hover:bg-red-800 transition-all shadow focus:ring-2 focus:ring-red-400 text-xs"
                       >
                         <TrashIcon className="w-4 h-4 inline" />
                       </button>
@@ -1188,54 +1188,54 @@ const Admin = () => {
           </div>
         </div>
         {/* Карточка модераторов */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-8 mb-6 w-full max-w-[900px] transition-all">
-          <div className="flex items-center mb-6">
-            <UserGroupIcon className="w-12 h-12 text-blue-800 dark:text-blue-300 mr-4" />
-            <span className="text-3xl font-extrabold text-blue-900 dark:text-blue-200">Модераторы</span>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-2 sm:p-4 mb-2 sm:mb-4 w-full max-w-full md:max-w-[900px] transition-all">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-2 sm:mb-4 gap-1 sm:gap-0">
+            <UserGroupIcon className="w-6 h-6 sm:w-10 sm:h-10 text-blue-800 dark:text-blue-300 mr-0 sm:mr-4" />
+            <span className="text-lg sm:text-2xl font-extrabold text-blue-900 dark:text-blue-200">Модераторы</span>
           </div>
-          {/* Фильтр модераторов */}
-          <div className="flex justify-between items-center mb-4">
-            <span className="text-base text-gray-700 dark:text-gray-300 font-light">Фильтр</span>
+          {/* Фильтр */}
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-2 sm:mb-3 gap-1 sm:gap-0">
+            <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-light">Фильтр</span>
             <input
               type="text"
               placeholder="Поиск по имени или email"
-              className="border border-gray-300 dark:border-gray-700 rounded-[8px] px-3 py-1 focus:outline-none focus:border-[#0D47A1] dark:focus:border-blue-400 w-64 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors"
+              className="border border-gray-300 dark:border-gray-700 rounded-[8px] px-2 py-2 focus:outline-none focus:border-[#0D47A1] dark:focus:border-blue-400 w-full sm:w-48 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors text-xs sm:text-base"
               value={moderatorsSearchQuery}
               onChange={(e) => setModeratorsSearchQuery(e.target.value)}
             />
           </div>
-          {/* Таблица модераторов */}
-          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-4">
-            <table className="min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs md:text-sm transition-colors">
+          {/* Таблица */}
+          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-2">
+            <table className="min-w-[500px] sm:min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs sm:text-sm transition-colors">
               <thead>
                 <tr className="bg-[#F1F8FF] dark:bg-gray-700 text-[#0D47A1] dark:text-blue-200 text-left">
-                  <th className="px-4 py-2 font-semibold">Имя</th>
-                  <th className="px-4 py-2 font-semibold">Email</th>
-                  <th className="px-4 py-2 font-semibold">Роль</th>
-                  <th className="px-4 py-2 font-semibold">Последняя активность</th>
-                  <th className="px-4 py-2 font-semibold">Действия</th>
+                  <th className="px-2 py-2 font-semibold">Имя</th>
+                  <th className="px-2 py-2 font-semibold">Email</th>
+                  <th className="px-2 py-2 font-semibold hidden xs:table-cell">Роль</th>
+                  <th className="px-2 py-2 font-semibold hidden sm:table-cell">Последняя активность</th>
+                  <th className="px-2 py-2 font-semibold">Действия</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredModerators.length === 0 ? (
-                  <tr><td colSpan="5" className="px-4 py-2 text-center text-gray-600">Нет доступных модераторов.</td></tr>
+                  <tr><td colSpan="5" className="px-2 py-2 text-center text-gray-600">Нет доступных модераторов.</td></tr>
                 ) : (
                   filteredModerators.map((moderator) => (
                     <tr key={moderator.id} className="border-t border-gray-100 hover:bg-[#F1F8FF] transition">
-                      <td className="px-4 py-2 text-gray-900">{moderator.username}</td>
-                      <td className="px-4 py-2 text-gray-700">{moderator.email}</td>
-                      <td className="px-4 py-2 text-gray-700">{moderator.role}</td>
-                      <td className="px-4 py-2 text-gray-700">{moderator.last_login ? new Date(moderator.last_login).toLocaleDateString() : 'Неизвестно'}</td>
-                      <td className="px-4 py-2">
+                      <td className="px-2 py-2 text-gray-900">{moderator.username}</td>
+                      <td className="px-2 py-2 text-gray-700">{moderator.email}</td>
+                      <td className="px-2 py-2 text-gray-700 hidden xs:table-cell">{moderator.role}</td>
+                      <td className="px-2 py-2 text-gray-700 hidden sm:table-cell">{moderator.last_login ? new Date(moderator.last_login).toLocaleDateString() : 'Неизвестно'}</td>
+                      <td className="px-2 py-2">
                         <button 
                           onClick={() => handleEditClick(moderator)}
-                          className="bg-[#0D47A1] text-white rounded-[8px] px-3 py-1 mr-2 hover:bg-[#1565c0] transition"
+                          className="bg-[#0D47A1] text-white rounded-[8px] px-2 py-1 mr-1 hover:bg-[#1565c0] transition text-xs"
                         >
                           <PencilIcon className="w-4 h-4 inline" />
                         </button>
                         <button 
                           onClick={() => handleDeleteClick(moderator.id)}
-                          className="bg-red-500 text-white rounded-[8px] px-3 py-1 hover:bg-red-700 transition"
+                          className="bg-red-500 text-white rounded-[8px] px-2 py-1 hover:bg-red-700 transition text-xs"
                         >
                           <TrashIcon className="w-4 h-4 inline" />
                         </button>
@@ -1246,49 +1246,45 @@ const Admin = () => {
               </tbody>
             </table>
           </div>
-          <div className="flex-1 flex items-center justify-center text-gray-400 text-lg"></div>
         </div>
         {/* Карточка достижений */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-8 mb-6 w-full max-w-[900px] transition-all">
-          <div className="flex items-center mb-6">
-            <ChartBarIcon className="w-12 h-12 text-blue-800 dark:text-blue-300 mr-4" />
-            <span className="text-3xl font-extrabold text-blue-900 dark:text-blue-200">Достижения</span>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-2 sm:p-4 mb-2 sm:mb-4 w-full max-w-full md:max-w-[900px] transition-all">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-2 sm:mb-4 gap-1 sm:gap-0">
+            <ChartBarIcon className="w-6 h-6 sm:w-10 sm:h-10 text-blue-800 dark:text-blue-300 mr-0 sm:mr-4" />
+            <span className="text-lg sm:text-2xl font-extrabold text-blue-900 dark:text-blue-200">Достижения</span>
           </div>
           {/* Поиск и сортировка */}
-          <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
-            <div className="flex flex-col sm:flex-row gap-2 w-full">
+          <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 mb-2 sm:mb-4 w-full">
             <input
               type="text"
               placeholder="Поиск по названию или описанию"
-                className="border border-gray-400 dark:border-gray-700 rounded-[8px] px-3 py-2 text-base focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 w-full sm:w-64 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 transition-colors"
+              className="border border-gray-400 dark:border-gray-700 rounded-[8px] px-2 py-2 text-xs sm:text-base focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 w-full sm:w-48 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 transition-colors"
               value={achievementSearch}
               onChange={e => setAchievementSearch(e.target.value)}
             />
             <button
-              className={`px-5 py-2 rounded-lg font-semibold transition ${achievementSort === 'title' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200'} hover:bg-blue-600 dark:hover:bg-blue-600`}
+              className={`px-3 py-1 rounded-lg font-semibold transition text-xs sm:text-base ${achievementSort === 'title' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200'} hover:bg-blue-600 dark:hover:bg-blue-600`}
               onClick={() => setAchievementSort('title')}
-                style={{ minWidth: '180px' }}
+              style={{ minWidth: '100px' }}
             >
               Сортировать по названию
             </button>
-              <button 
-                onClick={() => setShowAddAchievementModal(true)}
-                className="bg-green-500 text-white rounded-[8px] px-4 py-2 hover:bg-green-700 transition min-w-[180px]"
-              >
-                Добавить новое достижение
-              </button>
-            </div>
+            <button 
+              onClick={() => setShowAddAchievementModal(true)}
+              className="bg-green-500 text-white rounded-[8px] px-3 py-1 hover:bg-green-700 transition min-w-[100px] text-xs sm:text-base"
+            >
+              Добавить новое достижение
+            </button>
           </div>
-
           {/* Таблица достижений */}
-          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-4">
-            <table className="min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs md:text-sm transition-colors">
+          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-2">
+            <table className="min-w-[500px] sm:min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs sm:text-sm transition-colors">
               <thead>
                 <tr className="bg-[#F1F8FF] dark:bg-gray-700 text-[#0D47A1] dark:text-blue-200 text-left">
-                  <th className="px-4 py-2 font-semibold">Название</th>
-                  <th className="px-4 py-2 font-semibold">Описание</th>
-                  <th className="px-4 py-2 font-semibold">Требование</th>
-                  <th className="px-4 py-2 font-semibold">Действия</th>
+                  <th className="px-2 py-2 font-semibold">Название</th>
+                  <th className="px-2 py-2 font-semibold">Описание</th>
+                  <th className="px-2 py-2 font-semibold hidden xs:table-cell">Требование</th>
+                  <th className="px-2 py-2 font-semibold">Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -1312,25 +1308,9 @@ const Admin = () => {
                       key={achievement.id}
                       className={`border-t border-gray-100 dark:border-gray-700 transition ${idx % 2 === 0 ? 'bg-white dark:bg-gray-900/80' : 'bg-gray-50 dark:bg-gray-900/60'} hover:bg-[#F1F8FF] dark:hover:bg-gray-800/70`}
                     >
-                      <td className="px-4 py-2 text-gray-900 dark:text-gray-100">
-                        {achievement.icon && (
-                          <img
-                            src={
-                              achievement.icon.startsWith('http')
-                                ? achievement.icon
-                                : achievement.icon.startsWith('/api/achievement_icon/')
-                                  ? achievement.icon
-                                  : `/api/achievement_icon/${achievement.icon.replace('/api/achievement_icon/', '')}`
-                            }
-                            alt="icon"
-                            style={{ width: 32, height: 32, objectFit: 'contain', marginRight: 8, verticalAlign: 'middle', display: 'inline-block' }}
-                            onError={e => { e.target.style.display = 'none'; }}
-                          />
-                        )}
-                        {achievement.title}
-                      </td>
+                      <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{achievement.title}</td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{achievement.description}</td>
-                        <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{reqText}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden xs:table-cell">{reqText}</td>
                       <td className="px-4 py-2">
                           <div className="flex gap-2 items-center">
                         <button 
@@ -1373,48 +1353,45 @@ const Admin = () => {
           </div>
         </div>
         {/* Карточка сценариев */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-8 mb-6 w-full max-w-[900px] transition-all">
-          <div className="flex items-center mb-6">
-            <ChartBarIcon className="w-12 h-12 text-blue-800 dark:text-blue-300 mr-4" />
-            <span className="text-3xl font-extrabold text-blue-900 dark:text-blue-200">Сценарии</span>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-2 sm:p-4 mb-2 sm:mb-4 w-full max-w-full md:max-w-[900px] transition-all">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-2 sm:mb-4 gap-1 sm:gap-0">
+            <ChartBarIcon className="w-6 h-6 sm:w-10 sm:h-10 text-blue-800 dark:text-blue-300 mr-0 sm:mr-4" />
+            <span className="text-lg sm:text-2xl font-extrabold text-blue-900 dark:text-blue-200">Сценарии</span>
           </div>
           {/* Поиск и сортировка */}
-          <div className="flex flex-col md:flex-row md:items-center gap-2 mb-4">
-            <div className="flex flex-col sm:flex-row gap-2 w-full">
+          <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 mb-2 sm:mb-4 w-full">
             <input
               type="text"
               placeholder="Поиск по названию или описанию"
-                className="border border-gray-300 dark:border-gray-700 rounded-[8px] px-3 py-2 text-base focus:outline-none focus:border-[#0D47A1] dark:focus:border-blue-400 w-full sm:w-64 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors"
+              className="border border-gray-300 dark:border-gray-700 rounded-[8px] px-2 py-2 text-xs sm:text-base focus:outline-none focus:border-[#0D47A1] dark:focus:border-blue-400 w-full sm:w-48 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors"
               value={scenarioSearch}
               onChange={e => setScenarioSearch(e.target.value)}
             />
             <button
-              className={`px-5 py-2 rounded-lg font-semibold transition ${scenarioSort === 'name' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} hover:bg-blue-700`}
+              className={`px-3 py-1 rounded-lg font-semibold transition text-xs sm:text-base ${scenarioSort === 'name' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} hover:bg-blue-700`}
               onClick={() => setScenarioSort('name')}
-                style={{ minWidth: '180px' }}
+              style={{ minWidth: '100px' }}
             >
               Сортировать по названию
             </button>
-              <button 
-                onClick={() => setShowAddScenarioModal(true)}
-                className="bg-green-500 text-white rounded-[8px] px-4 py-2 hover:bg-green-700 transition min-w-[180px]"
-              >
-                Добавить новый сценарий
-              </button>
-            </div>
+            <button 
+              onClick={() => setShowAddScenarioModal(true)}
+              className="bg-green-500 text-white rounded-[8px] px-3 py-1 hover:bg-green-700 transition min-w-[100px] text-xs sm:text-base"
+            >
+              Добавить новый сценарий
+            </button>
           </div>
-
           {/* Таблица сценариев */}
-          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-4">
-            <table className="min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs md:text-sm transition-colors">
+          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-2">
+            <table className="min-w-[500px] sm:min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs sm:text-sm transition-colors">
               <thead>
                 <tr className="bg-[#F1F8FF] dark:bg-gray-700 text-[#0D47A1] dark:text-blue-200 text-left">
-                  <th className="px-4 py-2 font-semibold">Название</th>
-                  <th className="px-4 py-2 font-semibold">Описание</th>
-                  <th className="px-4 py-2 font-semibold">Сфера</th>
-                  <th className="px-4 py-2 font-semibold">Ситуация</th>
-                  <th className="px-4 py-2 font-semibold">Шаблон</th>
-                  <th className="px-4 py-2 font-semibold">Действия</th>
+                  <th className="px-2 py-2 font-semibold">Название</th>
+                  <th className="px-2 py-2 font-semibold">Описание</th>
+                  <th className="px-2 py-2 font-semibold hidden xs:table-cell">Сфера</th>
+                  <th className="px-2 py-2 font-semibold hidden sm:table-cell">Ситуация</th>
+                  <th className="px-2 py-2 font-semibold hidden md:table-cell">Шаблон</th>
+                  <th className="px-2 py-2 font-semibold">Действия</th>
                 </tr>
               </thead>
               <tbody>
@@ -1432,9 +1409,9 @@ const Admin = () => {
                     >
                       <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{scenario.name}</td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{scenario.description}</td>
-                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{scenario.sphere}</td>
-                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{scenario.situation}</td>
-                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{scenario.is_template ? 'Да' : 'Нет'}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden xs:table-cell">{scenario.sphere}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{scenario.situation}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden md:table-cell">{scenario.is_template ? 'Да' : 'Нет'}</td>
                       <td className="px-4 py-2">
                         <div className="flex gap-2 items-center">
                         <button 
@@ -1527,39 +1504,41 @@ const Admin = () => {
                 <button onClick={fetchDailyStats} className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-700 transition">Показать</button>
               </div>
               {loadingCharts && <div className="text-center text-blue-500 py-4 animate-pulse">Загрузка данных...</div>}
-              <Line
-                data={{
-                  labels: dailyStats.dates,
-                  datasets: [
-                    {
-                      label: 'Новые пользователи',
-                      data: dailyStats.users_per_day,
-                      borderColor: getChartColors().bg1,
-                      backgroundColor: getChartColors().bg1,
-                      tension: 0.3,
+              <div className="w-full overflow-x-auto"><div className="min-w-[400px] min-h-[220px] sm:min-h-[320px]">
+                <Line
+                  data={{
+                    labels: dailyStats.dates,
+                    datasets: [
+                      {
+                        label: 'Новые пользователи',
+                        data: dailyStats.users_per_day,
+                        borderColor: getChartColors().bg1,
+                        backgroundColor: getChartColors().bg1,
+                        tension: 0.3,
+                      },
+                      {
+                        label: 'Завершённые диалоги',
+                        data: dailyStats.dialogs_per_day,
+                        borderColor: getChartColors().bg2,
+                        backgroundColor: getChartColors().bg2,
+                        tension: 0.3,
+                      },
+                    ],
+                  }}
+                  options={{
+                    responsive: true,
+                    animation: { duration: 1200, easing: 'easeInOutQuart' },
+                    plugins: {
+                      legend: { position: 'top', labels: { color: getChartColors().text } },
+                      title: { display: false },
                     },
-                    {
-                      label: 'Завершённые диалоги',
-                      data: dailyStats.dialogs_per_day,
-                      borderColor: getChartColors().bg2,
-                      backgroundColor: getChartColors().bg2,
-                      tension: 0.3,
+                    scales: {
+                      x: { title: { display: true, text: 'Дата', color: getChartColors().text }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
+                      y: { title: { display: true, text: 'Количество', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
                     },
-                  ],
-                }}
-                options={{
-                  responsive: true,
-                  animation: { duration: 1200, easing: 'easeInOutQuart' },
-                  plugins: {
-                    legend: { position: 'top', labels: { color: getChartColors().text } },
-                    title: { display: false },
-                  },
-                  scales: {
-                    x: { title: { display: true, text: 'Дата', color: getChartColors().text }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                    y: { title: { display: true, text: 'Количество', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                  },
-                }}
-              />
+                  }}
+                />
+              </div></div>
             </div>
           ) : dailyStats && ( // если dailyStats есть, но данные некорректны
             <div className="text-center text-red-500 py-8 animate-fade-in">
@@ -1603,28 +1582,30 @@ const Admin = () => {
             <div className="rounded-2xl shadow-xl p-6 mb-6 flex flex-col md:flex-row items-center justify-between gap-8 overflow-x-auto transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-fade-in">
               <div className="w-full md:w-2/3 flex-shrink-0">
                 <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100 text-center md:text-left">График сценариев</h2>
-                <Bar
-                  data={{
-                    labels: topScenarios.labels,
-                    datasets: [{
-                      label: 'Количество диалогов',
-                      data: topScenarios.counts,
-                      backgroundColor: getChartColors().bg1,
-                      borderRadius: 8,
-                      maxBarThickness: 40,
-                    }],
-                  }}
-                  options={{
-                    responsive: true,
-                    animation: { duration: 1200, easing: 'easeInOutQuart' },
-                    plugins: { legend: { display: false, labels: { color: getChartColors().text } } },
-                    indexAxis: 'x',
-                    scales: {
-                      x: { title: { display: false }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                      y: { title: { display: true, text: 'Диалогов', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                    },
-                  }}
-                />
+                <div className="w-full overflow-x-auto"><div className="min-w-[400px] min-h-[220px] sm:min-h-[320px]">
+                  <Bar
+                    data={{
+                      labels: topScenarios.labels,
+                      datasets: [{
+                        label: 'Количество диалогов',
+                        data: topScenarios.counts,
+                        backgroundColor: getChartColors().bg1,
+                        borderRadius: 8,
+                        maxBarThickness: 40,
+                      }],
+                    }}
+                    options={{
+                      responsive: true,
+                      animation: { duration: 1200, easing: 'easeInOutQuart' },
+                      plugins: { legend: { display: false, labels: { color: getChartColors().text } } },
+                      indexAxis: 'x',
+                      scales: {
+                        x: { title: { display: false }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
+                        y: { title: { display: true, text: 'Диалогов', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
+                      },
+                    }}
+                  />
+                </div></div>
               </div>
               <div className="w-full md:w-1/3 flex flex-col items-center md:items-start mt-8 md:mt-0">
                 <h3 className="text-xl font-bold mb-4 text-blue-900 dark:text-blue-200 text-center md:text-left">Статистика</h3>
@@ -1662,33 +1643,35 @@ const Admin = () => {
           {achievementsDist ? (
             <div className="rounded-2xl shadow-xl p-6 mb-6 overflow-x-auto transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-fade-in">
               <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Распределение достижений</h2>
-              <Bar
-                data={{
-                  labels: achievementsDist.labels,
-                  datasets: [{
-                    label: 'Пользователей с достижением',
-                    data: achievementsDist.counts,
-                    backgroundColor: [getChartColors().bg2, getChartColors().bg3, getChartColors().bg4, getChartColors().bg5, getChartColors().bg6],
-                  }],
-                }}
-                options={{
-                  responsive: true,
-                  animation: { duration: 1200, easing: 'easeInOutQuart' },
-                  plugins: { legend: { display: false, labels: { color: getChartColors().text } } },
-                  indexAxis: 'y',
-                  scales: {
-                    x: { title: { display: true, text: 'Пользователей', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                    y: { title: { display: true, text: 'Достижение', color: getChartColors().text }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                  },
-                  onClick: (evt, elements) => {
-                    if (elements.length > 0) {
-                      const index = elements[0].index;
-                      const label = achievementsDist.labels[index];
-                      setDrillDownModal({ show: true, title: `Достижение: ${label}`, details: { type: 'achievement', label } });
-                    }
-                  },
-                }}
-              />
+              <div className="w-full overflow-x-auto"><div className="min-w-[400px] min-h-[220px] sm:min-h-[320px]">
+                <Bar
+                  data={{
+                    labels: achievementsDist.labels,
+                    datasets: [{
+                      label: 'Пользователей с достижением',
+                      data: achievementsDist.counts,
+                      backgroundColor: [getChartColors().bg2, getChartColors().bg3, getChartColors().bg4, getChartColors().bg5, getChartColors().bg6],
+                    }],
+                  }}
+                  options={{
+                    responsive: true,
+                    animation: { duration: 1200, easing: 'easeInOutQuart' },
+                    plugins: { legend: { display: false, labels: { color: getChartColors().text } } },
+                    indexAxis: 'y',
+                    scales: {
+                      x: { title: { display: true, text: 'Пользователей', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
+                      y: { title: { display: true, text: 'Достижение', color: getChartColors().text }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
+                    },
+                    onClick: (evt, elements) => {
+                      if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const label = achievementsDist.labels[index];
+                        setDrillDownModal({ show: true, title: `Достижение: ${label}`, details: { type: 'achievement', label } });
+                      }
+                    },
+                  }}
+                />
+              </div></div>
             </div>
           ) : (
             <div className="text-center text-gray-400 dark:text-gray-500 py-8 animate-fade-in">Нет данных по достижениям</div>
@@ -1697,33 +1680,35 @@ const Admin = () => {
           {topUsers ? (
             <div className="rounded-2xl shadow-xl p-6 mb-6 overflow-x-auto transition-colors bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 animate-fade-in">
               <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Топ-10 самых активных пользователей</h2>
-              <Bar
-                data={{
-                  labels: topUsers.labels,
-                  datasets: [{
-                    label: 'Диалогов',
-                    data: topUsers.counts,
-                    backgroundColor: [getChartColors().bg3, getChartColors().bg4, getChartColors().bg5, getChartColors().bg6, getChartColors().bg1, getChartColors().bg2],
-                  }],
-                }}
-                options={{
-                  responsive: true,
-                  animation: { duration: 1200, easing: 'easeInOutQuart' },
-                  plugins: { legend: { display: false, labels: { color: getChartColors().text } } },
-                  indexAxis: 'y',
-                  scales: {
-                    x: { title: { display: true, text: 'Диалогов', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                    y: { title: { display: true, text: 'Пользователь', color: getChartColors().text }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
-                  },
-                  onClick: (evt, elements) => {
-                    if (elements.length > 0) {
-                      const index = elements[0].index;
-                      const label = topUsers.labels[index];
-                      setDrillDownModal({ show: true, title: `Пользователь: ${label}`, details: { type: 'user', label } });
-                    }
-                  },
-                }}
-              />
+              <div className="w-full overflow-x-auto"><div className="min-w-[400px] min-h-[220px] sm:min-h-[320px]">
+                <Bar
+                  data={{
+                    labels: topUsers.labels,
+                    datasets: [{
+                      label: 'Диалогов',
+                      data: topUsers.counts,
+                      backgroundColor: [getChartColors().bg3, getChartColors().bg4, getChartColors().bg5, getChartColors().bg6, getChartColors().bg1, getChartColors().bg2],
+                    }],
+                  }}
+                  options={{
+                    responsive: true,
+                    animation: { duration: 1200, easing: 'easeInOutQuart' },
+                    plugins: { legend: { display: false, labels: { color: getChartColors().text } } },
+                    indexAxis: 'y',
+                    scales: {
+                      x: { title: { display: true, text: 'Диалогов', color: getChartColors().text }, beginAtZero: true, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
+                      y: { title: { display: true, text: 'Пользователь', color: getChartColors().text }, ticks: { color: getChartColors().text }, grid: { color: getChartColors().grid } },
+                    },
+                    onClick: (evt, elements) => {
+                      if (elements.length > 0) {
+                        const index = elements[0].index;
+                        const label = topUsers.labels[index];
+                        setDrillDownModal({ show: true, title: `Пользователь: ${label}`, details: { type: 'user', label } });
+                      }
+                    },
+                  }}
+                />
+              </div></div>
             </div>
           ) : (
             <div className="text-center text-gray-400 dark:text-gray-500 py-8 animate-fade-in">Нет данных по активности пользователей</div>
@@ -1800,77 +1785,27 @@ const Admin = () => {
       </div>
 
       {/* Модальное окно редактирования пользователя */}
-      {showEditModal && currentUser && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Редактировать пользователя: {currentUser.username}</h2>
-              <button onClick={() => setShowEditModal(false)} className="text-gray-500 hover:text-gray-700">
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-            </div>
-            <form onSubmit={handleSaveEdit}>
-              <div className="mb-4">
-                <label htmlFor="edit-username" className="block text-gray-700 text-sm font-bold mb-2">Имя пользователя:</label>
-                <input
-                  type="text"
-                  id="edit-username"
-                  name="username"
-                  value={editFormData.username}
-                  onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                />
-              </div>
-              <div className="mb-4">
-                <label htmlFor="edit-email" className="block text-gray-700 text-sm font-bold mb-2">Email:</label>
-                <input
-                  type="email"
-                  id="edit-email"
-                  name="email"
-                  value={editFormData.email}
-                  onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                />
-              </div>
-              <div className="mb-4">
-                <label htmlFor="edit-role" className="block text-gray-700 text-sm font-bold mb-2">Роль:</label>
-                <select
-                  id="edit-role"
-                  name="role"
-                  value={editFormData.role}
-                  onChange={handleInputChange}
-                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                >
-                  <option value="USER">USER</option>
-                  <option value="ADMIN">ADMIN</option>
-                  <option value="MANAGER">MANAGER</option>
-                </select>
-              </div>
-              <div className="mb-4 flex items-center">
-                <input
-                  type="checkbox"
-                  name="is_active"
-                  id="is_active"
-                  checked={editFormData.is_active}
-                  onChange={handleInputChange}
-                  className="mr-2 leading-tight"
-                />
-                <label className="text-gray-700 text-sm font-bold" htmlFor="is_active">Активен</label>
-              </div>
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded mr-2"
-                >
-                  Отмена
-                </button>
-                <button
-                  type="submit"
-                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-                >
-                  Сохранить
-                </button>
+      {showEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-3 sm:p-4 w-full max-w-[95vw] sm:max-w-sm mx-2 relative animate-fade-in max-h-[90vh] overflow-y-auto">
+            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 p-1 sm:p-2" onClick={() => setShowEditModal(false)}>
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+            <h3 className="text-lg sm:text-xl font-bold mb-2 text-gray-900 dark:text-white">Редактировать пользователя</h3>
+            <form onSubmit={handleSaveEdit} className="flex flex-col gap-2">
+              <input type="text" name="username" value={editFormData.username} onChange={handleInputChange} className="border rounded px-2 py-1 text-xs sm:text-sm dark:bg-gray-800 dark:text-gray-100" placeholder="Имя пользователя" />
+              <input type="email" name="email" value={editFormData.email} onChange={handleInputChange} className="border rounded px-2 py-1 text-xs sm:text-sm dark:bg-gray-800 dark:text-gray-100" placeholder="Email" />
+              <select name="role" value={editFormData.role} onChange={handleInputChange} className="border rounded px-2 py-1 text-xs sm:text-sm dark:bg-gray-800 dark:text-gray-100">
+                <option value="USER">Пользователь</option>
+                <option value="MANAGER">Модератор</option>
+                <option value="ADMIN">Админ</option>
+              </select>
+              <label className="flex items-center gap-2 text-xs sm:text-sm">
+                <input type="checkbox" name="is_active" checked={editFormData.is_active} onChange={handleInputChange} /> Активен
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2 mt-2">
+                <button type="submit" className="bg-blue-600 text-white rounded py-2 w-full sm:w-auto hover:bg-blue-700 transition">Сохранить</button>
+                <button type="button" className="bg-gray-300 text-gray-800 rounded py-2 w-full sm:w-auto hover:bg-gray-400 transition" onClick={() => setShowEditModal(false)}>Отмена</button>
               </div>
             </form>
           </div>
@@ -1880,7 +1815,7 @@ const Admin = () => {
       {/* Модальное окно добавления нового достижения */}
       {showAddAchievementModal && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 transition-colors">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-700 transition-colors">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-2 sm:p-6 w-full max-w-xs sm:max-w-md max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 transition-colors relative animate-fade-in">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Добавить новое достижение</h2>
               <button onClick={() => setShowAddAchievementModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
@@ -2016,7 +1951,7 @@ const Admin = () => {
       {/* Модальное окно редактирования достижения */}
       {showEditAchievementModal && currentAchievement && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-2 sm:p-6 w-full max-w-xs sm:max-w-md max-h-[90vh] overflow-y-auto relative">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">Редактировать достижение: {currentAchievement.title}</h2>
               <button onClick={() => setShowEditAchievementModal(false)} className="text-gray-500 hover:text-gray-700">
@@ -2213,8 +2148,8 @@ const Admin = () => {
 
       {/* Модальное окно добавления нового сценария */}
       {showAddScenarioModal && (
-        <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-xl max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 transition-colors">
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 transition-colors">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-2 sm:p-6 w-full max-w-xs sm:max-w-md max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 transition-colors relative animate-fade-in">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Добавить новый сценарий</h2>
               <button onClick={() => setShowAddScenarioModal(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
@@ -2372,7 +2307,7 @@ const Admin = () => {
       {/* Модальное окно редактирования сценария */}
       {showEditScenarioModal && currentScenario && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-2 sm:p-6 w-full max-w-xs sm:max-w-md max-h-[90vh] overflow-y-auto relative">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">Редактировать сценарий: {currentScenario.name}</h2>
               <button onClick={() => setShowEditScenarioModal(false)} className="text-gray-500 hover:text-gray-700">
