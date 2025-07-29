@@ -13,68 +13,43 @@ profile_bp = Blueprint('profile', __name__)
 @jwt_required()
 def get_profile():
     """
-    ОТЛАДОЧНАЯ версия получения профиля с детальным логированием
+    Получение профиля пользователя с полной статистикой
     """
     user_id = get_jwt_identity()
-    print(f"=== ОТЛАДКА ПРОФИЛЯ ===")
-    print(f"User ID from JWT: {user_id}")
     
     current_user = Users.query.get(user_id)
-    print(f"Current User object: {current_user}")
     if not current_user:
         return jsonify({'error': 'Пользователь не найден'}), 404
 
-    # Получаем ВСЕ диалоги пользователя с детальной информацией
+    # Получаем все диалоги пользователя
     all_dialogs = Dialog.query.filter_by(user_id=current_user.id).order_by(Dialog.id.desc()).all()
-    print(f"=== АНАЛИЗ ДИАЛОГОВ ===")
-    print(f"Всего диалогов найдено: {len(all_dialogs)}")
     
     completed_dialogs = []
     active_dialogs = []
     
     for dialog in all_dialogs:
-        print(f"Диалог {dialog.id}: статус='{dialog.status}', сценарий={dialog.scenario_id}, "
-              f"начат={dialog.started_at}, завершен={dialog.completed_at}, "
-              f"длительность={dialog.duration}, успешен={getattr(dialog, 'is_successful', None)}")
-        
         if dialog.status == 'completed':
             completed_dialogs.append(dialog)
         elif dialog.status == 'active':
             active_dialogs.append(dialog)
 
-    print(f"Завершенных диалогов: {len(completed_dialogs)}")
-    print(f"Активных диалогов: {len(active_dialogs)}")
-
-    # Анализ статистики пользователя
+    # Получаем статистику пользователя
     stats = current_user.statistics
-    print(f"=== СТАТИСТИКА ПОЛЬЗОВАТЕЛЯ ===")
-    if stats:
-        print(f"total_dialogs: {stats.total_dialogs}")
-        print(f"successful_dialogs: {stats.successful_dialogs}")
-        print(f"completed_scenarios: {stats.completed_scenarios}")
-        print(f"total_time_spent: {stats.total_time_spent}")
-        print(f"average_score: {stats.average_score}")
-    else:
-        print("Статистика пользователя отсутствует!")
 
     # Получаем уникальные завершенные сценарии
     completed_scenario_ids = set([d.scenario_id for d in completed_dialogs])
-    print(f"Уникальных завершенных сценариев: {len(completed_scenario_ids)} - {completed_scenario_ids}")
 
     # Рассчитываем время
     durations = [d.duration for d in completed_dialogs if d.duration and d.duration > 0]
-    print(f"Диалоги с duration: {len(durations)} из {len(completed_dialogs)}")
     
     average_time = int(sum(durations) / len(durations)) if durations else 0
     best_time = min(durations) if durations else 0
     last_time = durations[0] if durations else 0
-    
-    print(f"Статистика времени - Среднее: {average_time}, Лучшее: {best_time}, Последнее: {last_time}")
 
     # Получаем preferences
     preferences = current_user.preferences
 
-    # Формируем completed_scenarios для ответа
+    # Формируем completed_scenarios для ответа (по уникальным сценариям)
     completed_scenarios = []
     for scenario_id in completed_scenario_ids:
         scenario = Scenario.query.get(scenario_id)
@@ -113,19 +88,16 @@ def get_profile():
         UserProgress.updated_at >= week_ago
     ).order_by(UserProgress.updated_at).all()
 
-    # ПЕРЕСЧИТЫВАЕМ статистику на основе реальных данных
+    # Рассчитываем статистику на основе реальных данных
     total_time_spent = sum(durations) if durations else 0
     
     statistics_data = {
-        'totalDialogs': len(all_dialogs),  # ВСЕ диалоги
-        'completedScenarios': len(completed_scenario_ids),  # Уникальные завершенные сценарии
-        'totalTimeSpent': total_time_spent,  # Сумма всех duration
-        'averageScore': float(stats.average_score) if stats and stats.average_score else 0.0,
-        'successfulDialogs': len(all_dialogs)  # Теперь считаем все диалоги, а не только успешные
+        'totalDialogs': len(all_dialogs),
+        'completedDialogs': len(completed_dialogs),
+        'completedScenarios': len(completed_scenario_ids),
+        'totalTimeSpent': total_time_spent,
+        'averageScore': float(stats.average_score) if stats and stats.average_score else 0.0
     }
-
-    print(f"=== ИТОГОВАЯ СТАТИСТИКА ===")
-    print(f"statistics_data: {statistics_data}")
 
     # Формируем время по сценариям
     scenario_stats = []
@@ -144,8 +116,26 @@ def get_profile():
                 'name': scenario.name if scenario else f'Сценарий {sid}',
                 'best_time': min(times),
                 'average_time': int(sum(times)/len(times)),
-                'last_time': times[0]
+                'last_time': times[0],
+                'total_attempts': len(times)
             })
+
+    # Создаем активность по дням для графика
+    daily_activity = {}
+    for dialog in all_dialogs:
+        date_key = dialog.started_at.strftime('%Y-%m-%d')
+        if date_key not in daily_activity:
+            daily_activity[date_key] = {
+                'date': date_key,
+                'total_dialogs': 0,
+                'completed_dialogs': 0
+            }
+        daily_activity[date_key]['total_dialogs'] += 1
+        if dialog.status == 'completed':
+            daily_activity[date_key]['completed_dialogs'] += 1
+
+    # Сортируем активность по дате
+    sorted_activity = sorted(daily_activity.values(), key=lambda x: x['date'])
 
     return jsonify({
         'user': {
@@ -171,10 +161,9 @@ def get_profile():
             'started_at': d.started_at.isoformat(),
             'completed_at': d.completed_at.isoformat() if d.completed_at else None,
             'score': d.score,
-            'status': d.status,  # Показываем реальный статус
+            'status': d.status,
             'duration': d.duration if d.duration and d.duration > 0 else None,
             'analysis': getattr(d, 'analysis', None),
-            'was_successful': getattr(d, 'is_successful', None),
             'scenario_name': d.scenario.name if d.scenario else 'Неизвестный сценарий'
         } for d in all_dialogs],
         'badges': badges_data,
@@ -190,13 +179,7 @@ def get_profile():
             'byScenario': scenario_stats
         },
         'completed_scenarios': completed_scenarios,
-        'debug_info': {
-            'total_dialogs_in_db': len(all_dialogs),
-            'completed_dialogs_count': len(completed_dialogs),
-            'active_dialogs_count': len(active_dialogs),
-            'completed_scenario_ids': list(completed_scenario_ids),
-            'has_user_stats': stats is not None
-        }
+        'dailyActivity': sorted_activity
     }), 200
 
 @profile_bp.route('/preferences', methods=['PUT'])
@@ -218,25 +201,19 @@ def update_preferences():
     if not preferences:
         preferences = UserPreferences(user_id=current_user.id)
         db.session.add(preferences)
-        print(f"Созданы новые настройки для пользователя {current_user.id}")
 
     # Обновляем поля, если они есть в запросе
     if 'language' in data:
         preferences.language = data['language']
-        print(f"Обновлен язык: {data['language']}")
     if 'difficulty' in data:
         preferences.difficulty_preference = data['difficulty']
-        print(f"Обновлена сложность: {data['difficulty']}")
     if 'theme' in data:
         preferences.theme = data['theme']
-        print(f"Обновлена тема: {data['theme']}")
     if 'notification_enabled' in data:
         preferences.notification_enabled = data['notification_enabled']
-        print(f"Обновлены уведомления: {data['notification_enabled']}")
 
     try:
         db.session.commit()
-        print(f"Настройки пользователя {current_user.id} успешно сохранены")
         return jsonify({
             'message': 'Настройки успешно обновлены',
             'preferences': {
@@ -248,5 +225,4 @@ def update_preferences():
         }), 200
     except Exception as e:
         db.session.rollback()
-        print(f"Ошибка при сохранении настроек: {e}")
         return jsonify({'error': 'Ошибка при обновлении настроек', 'details': str(e)}), 500

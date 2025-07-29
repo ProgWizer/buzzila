@@ -1081,7 +1081,7 @@ const Admin = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F1F8FF] dark:bg-gray-900 py-12 flex items-center justify-center transition-colors">
-        <div className="text-gray-600 dark:text-gray-200 text-lg">Загрузка пользователей...</div>
+        <div className="text-gray-600 dark:text-gray-200 text-lg">Загрузка панели...</div>
       </div>
     );
   }

@@ -26,9 +26,69 @@
   .card {
     @apply bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6;
   }
+
+  /* Custom Scrollbar Styles */
+  .custom-scrollbar::-webkit-scrollbar,
+  .custom-scrollbar-activity::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track,
+  .custom-scrollbar-activity::-webkit-scrollbar-track {
+    background: var(--scrollbar-track-light);
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb,
+  .custom-scrollbar-activity::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb-light);
+    border-radius: 10px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+  .custom-scrollbar-activity::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af; /* A slightly darker shade on hover */
+  }
+
+  /* Dark mode scrollbar styles */
+  .dark .custom-scrollbar::-webkit-scrollbar-track,
+  .dark .custom-scrollbar-activity::-webkit-scrollbar-track {
+    background: var(--scrollbar-track-dark);
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb,
+  .dark .custom-scrollbar-activity::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb-dark);
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+  .dark .custom-scrollbar-activity::-webkit-scrollbar-thumb:hover {
+    background: #6b7280; /* A slightly darker shade on hover in dark mode */
+  }
+
+  /* Firefox scrollbar styles */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-light) var(--scrollbar-track-light);
+  }
+
+  .custom-scrollbar-activity {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb-light) var(--scrollbar-track-light);
+  }
+
+  .dark .custom-scrollbar {
+    scrollbar-color: var(--scrollbar-thumb-dark) var(--scrollbar-track-dark);
+  }
+
+  .dark .custom-scrollbar-activity {
+    scrollbar-color: var(--scrollbar-thumb-dark) var(--scrollbar-track-dark);
+  }
 }
+
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
-} 
+}

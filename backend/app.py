@@ -114,7 +114,6 @@ Session(app)
 # Импортируем и регистрируем Blueprints (модули API)
 from routes.auth import auth_bp
 from routes.scenarios import scenarios_bp
-from routes.dialog import dialog_bp
 from routes.progress import progress_bp
 from routes.profile import profile_bp
 from routes.chat import chat_bp
@@ -126,7 +125,6 @@ from routes.activity import activity_bp
 # Регистрируем Blueprints (разделяем API по модулям)
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
 app.register_blueprint(scenarios_bp, url_prefix='/api')
-app.register_blueprint(dialog_bp, url_prefix='/api')
 app.register_blueprint(progress_bp, url_prefix='/api/progress')
 app.register_blueprint(profile_bp, url_prefix='/api/profile')
 app.register_blueprint(chat_bp, url_prefix='/api/chat')

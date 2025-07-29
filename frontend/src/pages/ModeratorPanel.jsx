@@ -51,6 +51,7 @@ function getChartColors() {
 }
 
 const ModeratorPanel = () => {
+  const [loading, setLoading] = useState(true);
   // --- Достижения ---
   const [achievements, setAchievements] = useState([]);
   const [loadingAchievements, setLoadingAchievements] = useState(true);
@@ -677,6 +678,7 @@ const ModeratorPanel = () => {
           .panel-btn { font-size: 14px !important; padding: 12px 0 !important; min-width: 90px !important; min-height: 40px !important; }
         }
       `}</style>
+    
       {/* Хлебные крошки */}
       <nav className="w-full max-w-[1200px] mb-1 sm:mb-4 text-xs sm:text-sm">
         <ol className="flex flex-wrap items-center space-x-1 sm:space-x-2 text-gray-400 dark:text-gray-400 break-words">

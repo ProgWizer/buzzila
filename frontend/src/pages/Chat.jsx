@@ -282,36 +282,86 @@ const Chat = () => {
     }
   };
   // Завершение симуляции 
-  const handleFinish = async () => {
-    if (isTimed && startTime) {
-      const finishTime = Date.now();
-      setEndTime(finishTime);
-      const dur = Math.floor((finishTime - startTime) / 1000);
-      setDuration(dur);
-      // Отправляем duration на backend
-      try {
-        const resp = await fetch(`/api/chat/session/${dialogId}/finish`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          },
-          body: JSON.stringify({ duration: dur }),
-        });
-        if (!resp.ok) {
-          const data = await resp.json();
-          if (data.error && data.error.includes('Диалог уже завершен')) {
-            setError('Диалог уже завершён.');
-            return;
-          }
-        }
-      } catch (e) {
-        setError('Ошибка при завершении диалога.');
-        return;
-      }
+const handleFinish = async () => {
+  if (loading) return; // Предотвращаем двойные вызовы
+  
+  let calculatedDuration = 0;
+  
+  // Если диалог таймированный, рассчитываем длительность
+  if (isTimed && startTime) {
+    const finishTime = Date.now();
+    setEndTime(finishTime);
+    calculatedDuration = Math.floor((finishTime - startTime) / 1000);
+    setDuration(calculatedDuration);
+  }
+  
+  setLoading(true);
+  setError(null);
+  
+  // Оптимистично добавляем сообщение пользователя
+  setMessages(prev => [
+    ...prev,
+    { role: 'user', text: 'ЗАВЕРШИТЬ СИМУЛЯЦИЮ' }
+  ]);
+  
+  try {
+    // Отправляем сообщение о завершении с длительностью
+    const res = await fetch(`/api/chat/session/${dialogId}/message`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+      },
+      body: JSON.stringify({ 
+        message: 'ЗАВЕРШИТЬ СИМУЛЯЦИЮ',
+        duration: calculatedDuration // Отправляем duration вместе с сообщением
+      }),
+    });
+
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      throw new Error('Ошибка сервера: получен невалидный ответ.');
     }
-    await sendMessage('ЗАВЕРШИТЬ СИМУЛЯЦИЮ');
-  };
+
+    if (!res.ok) {
+      throw new Error(data.error || 'Ошибка при завершении диалога');
+    }
+
+    // Обрабатываем успешный ответ
+    if (data.analysis) {
+      setAnalysis(data.analysis);
+      setShowAnalysisModal(true);
+      setAnalysisError(false);
+      
+      // Добавляем системное сообщение с анализом
+      if (data.analysis_message) {
+        setMessages(prev => [...prev, { 
+          role: 'system', 
+          text: data.analysis_message.text 
+        }]);
+      }
+      
+      // Обрабатываем достижения
+      if (data.achievements && data.achievements.length > 0) {
+        setNewAchievements(data.achievements);
+      }
+    } else if (data.error) {
+      setAnalysisError(true);
+      setShowAnalysisModal(true);
+      setError(data.error);
+    }
+
+  } catch (err) {
+    console.error('Ошибка при завершении диалога:', err);
+    setError(err.message);
+    setAnalysisError(true);
+    setShowAnalysisModal(true);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#F1F8FF] dark:bg-gray-900 flex flex-col items-center py-2 sm:py-8 px-0.5 sm:px-2 overflow-x-hidden">
