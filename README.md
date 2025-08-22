@@ -1,60 +1,40 @@
-# Customer Service Training Platform
+# Buzzila - Платформа для тренировки навыков общения с клиентами
 
-**Платформа для тренировки навыков общения с клиентами**  
-(Backend: Flask + PostgreSQL + Redis, Frontend: React, Dockerized)
+Веб-приложение для обучения персонала работе с недовольными клиентами через симуляцию диалогов с ИИ.
 
----
+## Что это такое
 
-## О проекте
+Платформа позволяет сотрудникам практиковаться в решении конфликтных ситуаций с клиентами. Пользователь играет роль сотрудника (официанта, администратора и т.д.), а ИИ выступает в роли недовольного клиента. После завершения диалога система анализирует разговор и дает рекомендации по улучшению навыков.
 
-Это современное веб-приложение для тренировки навыков общения в различных сценариях обслуживания клиентов.  
-Платформа позволяет моделировать диалоги с виртуальным собеседником (ботом), отслеживать прогресс, получать достижения и анализировать статистику.
+## Основные функции
 
-**Ключевые возможности:**
-- Регистрация и аутентификация пользователей (JWT)
-- Роли пользователей: USER, ADMIN, MANAGER
-- Сценарии диалогов (гостиница, аэропорт, кафе и др.)
-- Интеграция с DeepSeek API для генерации ответов бота
-- Хранение сессий и кэша в Redis
-- Админ-панель для управления сценариями и пользователями
-- Docker-окружение для быстрого деплоя
-
----
+- **Симуляция диалогов** - практика с ИИ в разных сценариях
+- **Сценарии** - гостиница, кафе, аэропорт с разными уровнями сложности
+- **Анализ диалогов** - автоматическая оценка и рекомендации
+- **Система достижений** - мотивация через геймификацию
+- **Отслеживание прогресса** - статистика по сценариям
+- **Админ-панель** - управление пользователями, сценариями, системными промптами
 
 ## Технологии
 
-- **Backend:** Flask, Flask-SQLAlchemy, Flask-JWT-Extended, PostgreSQL, Redis, Gunicorn
-- **Frontend:** React, Axios, Toastify, Nginx (продакшн)
-- **DevOps:** Docker, Docker Compose, .env-конфигурация
+**Backend:** Flask, PostgreSQL, Redis, JWT аутентификация
+**Frontend:** React, Tailwind CSS, Chart.js
+**ИИ:** DeepSeek API для генерации ответов
+**Развертывание:** Docker, Docker Compose
 
----
+## Быстрый запуск
 
-## Быстрый старт (через Docker Compose)
+### Через Docker (рекомендуется)
 
-1. **Клонируйте репозиторий:**
-   ```sh
-   git clone https://github.com/your-username/your-repo.git
-   cd your-repo
-   ```
+1. Клонируйте репозиторий:
+```bash
+git clone <url-репозитория>
+cd buzzila
+```
 
-2. **Создайте и заполните .env-файлы:**
-   - `backend/.env` — основные переменные окружения для backend (см. пример ниже)
-   - `frontend/.env` — (опционально) переменные для frontend
-
-3. **Запустите всё через Docker Compose:**
-   ```sh
-   docker-compose up --build
-   ```
-   После запуска:
-   - Backend будет доступен на [http://localhost:5000](http://localhost:5000)
-   - Frontend — на [http://localhost](http://localhost)
-
----
-
-## Пример .env для backend
-
+2. Создайте файл `.env` в корне проекта:
 ```env
-# PostgreSQL
+# База данных
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_db_password
 POSTGRES_DB=your_db_name
@@ -72,56 +52,110 @@ JWT_SECRET_KEY=your_jwt_secret
 DEBUG=False
 
 # DeepSeek API
-DEEPSEEK_API_KEY=your_deepseek_api_key
+DEEPSEEK_API_KEY=your-api-key-here
 DEEPSEEK_API_URL=https://api.deepseek.com/v1
 ```
 
----
+3. Запустите приложение:
+```bash
+docker-compose up --build
+```
 
-## Основные команды для разработки
+Приложение будет доступно:
+- Frontend: http://localhost
+- Backend API: http://localhost:5000
 
-- **Backend локально:**
-  ```sh
-  cd backend
-  python -m venv venv
-  source venv/bin/activate  # или venv\Scripts\activate для Windows
-  pip install -r requirements.txt
-  python app.py
-  ```
-- **Frontend локально:**
-  ```sh
-  cd frontend
-  npm install
-  npm start
-  ```
+### Локальная разработка
 
----
+**Backend:**
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate  # Windows
+pip install -r requirements.txt
+python app.py
+```
+
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm start
+```
 
 ## Структура проекта
 
 ```
-MainTest/
-  backend/         # Flask backend (API, модели, сервисы)
-  frontend/        # React frontend (src, public, nginx)
-  docker-compose.yml
-  README.md
+buzzila/
+├── backend/           # Flask API
+│   ├── routes/       # API endpoints
+│   ├── models/       # Модели базы данных
+│   ├── services/     # Бизнес-логика
+│   └── utils/        # Утилиты
+├── frontend/         # React приложение
+│   ├── src/         # Исходный код
+│   └── public/      # Статические файлы
+└── docker-compose.yml
 ```
 
----
+## API Endpoints
 
-## API
+- `POST /api/auth/register` - регистрация
+- `POST /api/auth/login` - вход
+- `GET /api/chat/scenarios` - список сценариев
+- `POST /api/chat/session` - создание диалога
+- `POST /api/chat/session/{id}/message` - отправка сообщения
+- `GET /api/admin/users` - управление пользователями (admin)
+- `GET /api/admin/scenarios` - управление сценариями (admin)
 
-- `POST /api/auth/register` — регистрация пользователя
-- `POST /api/auth/login` — вход
-- `POST /api/auth/logout` — выход
-- `GET  /api/profile` — профиль пользователя
-- `POST /api/chat` — диалог с ботом
-- ...и другие 
+## Настройка
 
----
+### Переменные окружения
 
-## Контакты и поддержка
+Основные настройки в `backend/.env`:
+- Параметры базы данных PostgreSQL
+- Настройки Redis
+- Ключи API для DeepSeek
+- JWT секреты
 
-- Issues и предложения — через [GitHub Issues](https://github.com/your-username/your-repo/issues)
+### База данных
 
----
+При первом запуске автоматически создаются:
+- Таблицы пользователей, сценариев, диалогов
+- Роли пользователей (user, admin, manager)
+- Базовые сценарии для тренировки
+
+## Разработка
+
+### Добавление новых сценариев
+
+1. Через админ-панель (если есть права)
+2. Напрямую в базе данных
+3. Через API (если реализовано)
+
+### Изменение системных промптов
+
+Системные промпты для ИИ настраиваются в админ-панели:
+- Промпт для начала диалога
+- Промпт для продолжения диалога
+- Настройки поведения ИИ
+
+## Проблемы и решения
+
+### Частые ошибки
+
+1. **Ошибка подключения к базе данных** - проверьте параметры в `.env`
+2. **Ошибка DeepSeek API** - проверьте API ключ и лимиты
+3. **Проблемы с Redis** - убедитесь что Redis запущен
+
+### Логи
+
+Логи приложения выводятся в stdout. Для продакшена настройте логирование в файлы.
+
+## Лицензия
+
+Проект для внутреннего использования.
+
+## Поддержка
+
+При возникновении проблем создавайте issue в репозитории или обращайтесь к команде разработки.
