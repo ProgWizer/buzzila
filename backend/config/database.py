@@ -6,21 +6,21 @@ load_dotenv()
 
 class DatabaseConfig:
     # PostgreSQL
-    POSTGRES_USER = os.getenv('POSTGRES_USER', 'postgres')
-    POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD', 'postgres')
-    POSTGRES_HOST = os.getenv('POSTGRES_HOST', 'localhost')
-    POSTGRES_PORT = os.getenv('POSTGRES_PORT', '5432')
-    POSTGRES_DB = os.getenv('POSTGRES_DB', 'service_training')
+    POSTGRES_USER = os.getenv('POSTGRES_USER')
+    POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
+    POSTGRES_HOST = os.getenv('POSTGRES_HOST')
+    POSTGRES_PORT = os.getenv('POSTGRES_PORT')
+    POSTGRES_DB = os.getenv('POSTGRES_DB')
     
     # MongoDB
-    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017')
-    MONGO_DB = os.getenv('MONGO_DB', 'service_training_logs')
+    MONGO_URI = os.getenv('MONGO_URI')
+    MONGO_DB = os.getenv('MONGO_DB')
     
     # Redis
-    REDIS_HOST = os.getenv('REDIS_HOST', 'localhost')
-    REDIS_PORT = os.getenv('REDIS_PORT', '6379')
-    REDIS_DB = os.getenv('REDIS_DB', '0')
-    REDIS_PASSWORD = os.getenv('REDIS_PASSWORD', None)
+    REDIS_HOST = os.getenv('REDIS_HOST')
+    REDIS_PORT = os.getenv('REDIS_PORT')
+    REDIS_DB = os.getenv('REDIS_DB')
+    REDIS_PASSWORD = os.getenv('REDIS_PASSWORD')
 
     @classmethod
     def get_postgres_url(cls) -> str:
