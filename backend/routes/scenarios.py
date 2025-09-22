@@ -21,6 +21,7 @@ def add_scenario():
     ai_role = data.get('ai_role')
     ai_behavior = data.get('ai_behavior')
     is_template = data.get('is_template', False) # Добавляем новое поле, по умолчанию False
+    organization_id = data.get('organization_id') # Добавляем поддержку организации
 
     if not all([name, description, category, subcategory, mood, language, user_role, ai_role, ai_behavior]):
         return jsonify({'error': 'Необходимо заполнить все обязательные поля.'}), 400
@@ -67,10 +68,9 @@ def add_scenario():
         ai_behavior=ai_behavior,
         prompt_template=prompt_template,
         # TODO: type, difficulty, organization_id, estimated_time - пока не заполняем, можно будет добавить позже
-        type=ScenarioType.HOTEL,
+        type=ScenarioType.CAFE,  # По умолчанию
         difficulty=1, # Заглушка
-        organization_id=1, # Заглушка
-        is_template=is_template
+        organization_id=organization_id  # Добавляем организацию
     )
 
     try:
@@ -100,7 +100,12 @@ def get_all_scenarios_admin():
             'ai_behavior': scenario.ai_behavior,
             'created_at': scenario.created_at.isoformat(),
             'is_active': scenario.is_active,
-            'is_template': scenario.is_template
+            'is_template': scenario.is_template,
+            'organization_id': scenario.organization_id,
+            'organization': {
+                'id': scenario.organization.id if scenario.organization else None,
+                'name': scenario.organization.name if scenario.organization else None,
+            }
         })
     return jsonify(scenarios_list), 200
 
@@ -162,6 +167,11 @@ def get_scenarios_for_user_view():
             'statistics': {
                 'total_dialogs': stats['total_dialogs'],
                 'average_score': stats['average_score']
+            },
+            'organization_id': scenario.organization_id,
+            'organization': {
+                'id': scenario.organization.id if scenario.organization else None,
+                'name': scenario.organization.name if scenario.organization else None,
             }
         })
     
@@ -247,6 +257,10 @@ def update_scenario(scenario_id):
     # Можно обновить prompt_template, если нужно
     if 'prompt_template' in data:
         scenario.prompt_template = data['prompt_template']
+
+    # Обновление привязки к организации (может быть null)
+    if 'organization_id' in data:
+        scenario.organization_id = data['organization_id']
 
     try:
         db.session.commit()
