@@ -48,244 +48,327 @@ class Users(db.Model):
     email = Column(String(120), unique=True, nullable=False)  # Email пользователя
     password_hash = Column(String(256), nullable=False)  # Хэш пароля
     role = Column(Enum(UserRole), default=UserRole.USER)  # Роль пользователя
-    organization_id = Column(Integer, ForeignKey('organizations.id'))  # Организация
-    created_at = Column(DateTime, default=datetime.utcnow)
-    last_login = Column(DateTime)  # Последний вход
     is_active = Column(Boolean, default=True)  # Активен ли пользователь
-    points = Column(Integer, default=0)  # Очки пользователя
-    
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
+    last_login = Column(DateTime)  # Дата последнего входа
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=True)  # Связь с организацией
+    total_score = Column(Float, default=0.0)  # Общий счет пользователя
+    level = Column(Integer, default=1)  # Уровень пользователя
+    experience_points = Column(Integer, default=0)  # Очки опыта
+    points = Column(Integer, default=0)  # Очки пользователя (дополнительное поле)
+
     # Связи
-    organization = relationship("Organization", back_populates="users")
-    dialogs = relationship("Dialog", back_populates="user")
-    achievements = relationship("UserAchievement", back_populates="user")
-    ratings = relationship("Rating", back_populates="user")
-    preferences = relationship("UserPreferences", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    statistics = relationship("UserStatistics", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    progress = relationship("UserProgress", back_populates="user")
-    user_badges = relationship("UserBadge", back_populates="user")
+    organization = relationship("Organization", back_populates="users")  # Связь с организацией
+    user_achievements = relationship("UserAchievement", back_populates="user")  # Достижения пользователя
+    dialogs = relationship("Dialog", back_populates="user")  # Диалоги пользователя
+    activities = relationship("Activity", back_populates="user")  # Активность пользователя
+    preferences = relationship("UserPreferences", back_populates="user", uselist=False, cascade="all, delete-orphan")  # Настройки пользователя
+    statistics = relationship("UserStatistics", back_populates="user", uselist=False, cascade="all, delete-orphan")  # Статистика пользователя
+    progress = relationship("UserProgress", back_populates="user")  # Прогресс пользователя
+    user_badges = relationship("UserBadge", back_populates="user")  # Значки пользователя
+    ratings = relationship("Rating", back_populates="user")  # Рейтинги пользователя
 
 class Organization(db.Model):
     """
-    Организация, к которой может принадлежать пользователь или сценарий.
+    Модель организации.
+    Содержит информацию об организации, к которой могут принадлежать пользователи.
     """
     __tablename__ = 'organizations'
     
     id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False)  # Название организации
-    description = Column(String(500))  # Описание
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
+    name = Column(String(100), unique=True, nullable=False)  # Название организации
+    description = Column(String(500))  # Описание организации
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
+    is_active = Column(Boolean, default=True)  # Активна ли организация
+
     # Связи
-    users = relationship("Users", back_populates="organization")
-    scenarios = relationship("Scenario", back_populates="organization")
+    users = relationship("Users", back_populates="organization")  # Пользователи организации
+    scenarios = relationship("Scenario", back_populates="organization")  # Сценарии организации
+    prompt_templates = relationship("PromptTemplate", back_populates="organization")  # Шаблоны промптов организации
 
 class Scenario(db.Model):
     """
-    Сценарий для тренировки пользователя (например, "злой клиент в кафе").
+    Модель сценария для ролевых игр.
+    Содержит информацию о сценарии, включая описание, роли и шаблон промпта.
     """
     __tablename__ = 'scenarios'
     
     id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False)  # Название сценария
-    description = Column(String(500), nullable=False)  # Описание сценария
+    name = Column(String(200), nullable=False)  # Название сценария
+    description = Column(Text, nullable=False)  # Описание сценария
+    category = Column(String(50), nullable=False)  # Категория сценария
+    subcategory = Column(String(50), nullable=False)  # Подкатегория сценария
+    sphere = Column(String(100), nullable=False)  # Сфера применения
+    situation = Column(String(200), nullable=False)  # Ситуация
+    mood = Column(String(100), nullable=False)  # Настроение
+    language = Column(String(50), default='ru')  # Язык сценария
+    user_role = Column(String(200), nullable=False)  # Роль пользователя
+    ai_role = Column(String(200), nullable=False)  # Роль ИИ
+    ai_behavior = Column(String(200), nullable=False)  # Поведение ИИ
+    is_active = Column(Boolean, default=True)  # Активен ли сценарий
+    is_template = Column(Boolean, default=False)  # Является ли шаблоном
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=True)  # Связь с организацией
+    prompt_template = Column(Text, nullable=False)  # Шаблон для генерации диалога
     type = Column(Enum(ScenarioType), nullable=False)  # Тип сценария
     difficulty = Column(Integer, default=1)  # Сложность (1-5)
-    organization_id = Column(Integer, ForeignKey('organizations.id'))  # Организация
-    created_at = Column(DateTime, default=datetime.utcnow)
-    is_active = Column(Boolean, default=True)  # Активен ли сценарий
-    prompt_template = Column(Text, nullable=False)  # Шаблон для генерации диалога
-    
-    # Дополнительные поля
-    category = Column(String(50), nullable=False)  # Категория
-    subcategory = Column(String(100), nullable=False)  # Подкатегория
-    user_role = Column(String(100), nullable=False)  # Роль пользователя в сценарии
-    ai_role = Column(String(100), nullable=False)  # Роль ИИ в сценарии
-    ai_behavior = Column(String(500), nullable=False)  # Поведение ИИ
-    estimated_time = Column(Integer) # Оценочное время (в минутах)
+    estimated_time = Column(Integer)  # Оценочное время (в минутах)
     category_id = Column(Integer, ForeignKey('categories.id'))  # Категория (внешний ключ)
-    mood = Column(String(50), nullable=False)  # Настроение
-    language = Column(String(10), nullable=False)  # Язык
-    is_template = Column(Boolean, default=False) # Является ли шаблоном
 
     # Связи
-    organization = relationship("Organization", back_populates="scenarios")
-    dialogs = relationship("Dialog", back_populates="scenario")
-    category_obj = relationship("Category", back_populates="scenarios")
-    user_progress = relationship("UserProgress", back_populates="scenario")
-    
+    organization = relationship("Organization", back_populates="scenarios")  # Связь с организацией
+    category_obj = relationship("Category", back_populates="scenarios")  # Связь с категорией
+    dialogs = relationship("Dialog", back_populates="scenario")  # Диалоги по сценарию
+    user_progress = relationship("UserProgress", back_populates="scenario")  # Прогресс пользователей
+
     def get_user_progress(self, user_id):
         """
         Возвращает прогресс пользователя по данному сценарию.
         """
         return next((progress for progress in self.user_progress if progress.user_id == user_id), None)
 
-class Dialog(db.Model): 
+class Dialog(db.Model):
     """
-    Диалог между пользователем и ИИ в рамках сценария.
+    Модель диалога между пользователем и ИИ.
+    Содержит информацию о диалоге, включая сценарий и участников.
     """
     __tablename__ = 'dialogs'
     
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))  # Пользователь
-    scenario_id = Column(Integer, ForeignKey('scenarios.id'))  # Сценарий
-    started_at = Column(DateTime, default=datetime.utcnow)  # Время начала
-    ended_at = Column(DateTime)  # Время окончания
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # Связь с пользователем
+    scenario_id = Column(Integer, ForeignKey('scenarios.id'), nullable=False)  # Связь со сценарием
+    started_at = Column(DateTime, default=datetime.utcnow)  # Время начала диалога
+    finished_at = Column(DateTime)  # Время окончания диалога
+    ended_at = Column(DateTime)  # Время окончания диалога (дополнительное поле)
     duration = Column(Integer)  # Длительность (в секундах)
-    score = Column(Float)  # Оценка диалога
+    is_finished = Column(Boolean, default=False)  # Завершен ли диалог
+    user_score = Column(Float, default=0.0)  # Оценка пользователя
+    score = Column(Float)  # Оценка диалога (дополнительное поле)
+    ai_feedback = Column(Text)  # Обратная связь от ИИ
+    total_messages = Column(Integer, default=0)  # Общее количество сообщений
+    user_messages_count = Column(Integer, default=0)  # Количество сообщений пользователя
+    ai_messages_count = Column(Integer, default=0)  # Количество сообщений ИИ
     messages = Column(JSON)  # История сообщений
     status = Column(String(20), default='active')  # Статус диалога
     completed_at = Column(DateTime, nullable=True)  # Время завершения
     is_successful = Column(Boolean, nullable=True)  # Успешность диалога
-    
+    is_archived = Column(Boolean, default=False)  # Архивирован ли диалог
+
     # Связи
-    user = relationship("Users", back_populates="dialogs")
-    scenario = relationship("Scenario", back_populates="dialogs")
-    message_objects = relationship("Message", back_populates="dialog")
+    user = relationship("Users", back_populates="dialogs")  # Связь с пользователем
+    scenario = relationship("Scenario", back_populates="dialogs")  # Связь со сценарием
+    message_objects = relationship("Message", back_populates="dialog")  # Объекты сообщений
+
+class Message(db.Model):
+    """
+    Модель сообщения в диалоге.
+    Содержит текст сообщения, отправителя и время отправки.
+    """
+    __tablename__ = 'messages'
+    
+    id = Column(Integer, primary_key=True)
+    dialog_id = Column(Integer, ForeignKey('dialogs.id'), nullable=False)  # Связь с диалогом
+    sender = Column(String(20), nullable=False)  # Отправитель: 'user' или 'ai'
+    text = Column(Text, nullable=False)  # Текст сообщения
+    timestamp = Column(DateTime, default=datetime.utcnow)  # Время отправки
+
+    # Связи
+    dialog = relationship("Dialog", back_populates="message_objects")  # Связь с диалогом
 
 class Achievement(db.Model):
     """
-    Достижение, которое может получить пользователь.
+    Модель достижения.
+    Содержит информацию о достижении, включая название, описание и требования.
     """
     __tablename__ = 'achievements'
     
     id = Column(Integer, primary_key=True)
-    name = Column(String(100), nullable=False)  # Название достижения
-    description = Column(String(500))  # Описание
-    icon = Column(String(100))  # Иконка
+    title = Column(String(200), nullable=False)  # Название достижения
+    name = Column(String(100), nullable=False)  # Название достижения (дополнительное поле)
+    description = Column(Text, nullable=False)  # Описание достижения
+    icon = Column(String(500))  # Иконка достижения
     points = Column(Integer, default=0)  # Очки за достижение
-    is_repeatable = Column(Boolean, default=False)  # Можно ли получить несколько раз
-    requirements = Column(JSON)  # Условия получения
-    
+    is_repeatable = Column(Boolean, default=False)  # Повторяемое ли достижение
+    requirements = Column(JSON)  # Требования для получения достижения
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
+
     # Связи
-    user_achievements = relationship("UserAchievement", back_populates="achievement")
+    user_achievements = relationship("UserAchievement", back_populates="achievement")  # Достижения пользователей
 
 class UserAchievement(db.Model):
     """
-    Связь пользователя и достижения (когда и какое достижение получено).
+    Модель связи пользователя и достижения.
+    Содержит информацию о том, когда пользователь получил достижение.
     """
     __tablename__ = 'user_achievements'
     
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))  # Пользователь
-    achievement_id = Column(Integer, ForeignKey('achievements.id'))  # Достижение
-    earned_at = Column(DateTime, default=datetime.utcnow)  # Время получения
-    progress = Column(Integer, default=0)  # Прогресс (для накопительных достижений)
-    
-    # Связи
-    user = relationship("Users", back_populates="achievements")
-    achievement = relationship("Achievement", back_populates="user_achievements")
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # Связь с пользователем
+    achievement_id = Column(Integer, ForeignKey('achievements.id'), nullable=False)  # Связь с достижением
+    earned_at = Column(DateTime, default=datetime.utcnow)  # Время получения достижения
+    progress = Column(Float, default=0.0)  # Прогресс выполнения (0.0 - 1.0)
 
-class Rating(db.Model):
+    # Связи
+    user = relationship("Users", back_populates="user_achievements")  # Связь с пользователем
+    achievement = relationship("Achievement", back_populates="user_achievements")  # Связь с достижением
+
+class Activity(db.Model):
     """
-    Рейтинг пользователя (например, общий, по организации, за период).
+    Модель активности пользователя.
+    Содержит информацию о действиях пользователя в системе.
     """
-    __tablename__ = 'ratings'
+    __tablename__ = 'activities'
     
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))  # Пользователь
-    score = Column(Float, nullable=False)  # Баллы
-    category = Column(String(50))  # Категория рейтинга
-    period = Column(String(20))  # Период (daily, weekly, monthly)
-    calculated_at = Column(DateTime, default=datetime.utcnow)  # Дата расчёта
-    
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # Связь с пользователем
+    activity_type = Column(String(50), nullable=False)  # Тип активности
+    description = Column(String(500))  # Описание активности
+    activity_metadata = Column(JSON)  # Дополнительные данные
+    timestamp = Column(DateTime, default=datetime.utcnow)  # Время активности
+
     # Связи
-    user = relationship("Users", back_populates="ratings")
+    user = relationship("Users", back_populates="activities")  # Связь с пользователем
+
+class PromptTemplate(db.Model):
+    """
+    Модель шаблона системного промпта.
+    Содержит информацию о шаблоне промпта для использования в сценариях.
+    """
+    __tablename__ = 'prompt_templates'
+    
+    id = Column(Integer, primary_key=True)
+    name = Column(String(150), nullable=False)  # Название шаблона
+    description = Column(String(500))  # Описание шаблона
+    content_start = Column(Text)  # Контент для начала диалога
+    content_continue = Column(Text)  # Контент для продолжения диалога
+    forbidden_words = Column(Text)  # Запрещенные слова
+    sections_json = Column(Text)  # JSON с секциями шаблона
+    organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=True)  # Связь с организацией
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
+    created_by_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)  # Создатель шаблона
+    is_global = Column(Boolean, default=True)  # Глобальный ли шаблон
+
+    # Связи
+    organization = relationship("Organization", back_populates="prompt_templates")  # Связь с организацией
+    created_by = relationship("Users", backref="created_prompt_templates")  # Создатель шаблона
 
 class UserPreferences(db.Model):
     """
-    Настройки пользователя (язык, тема, предпочтения сложности).
+    Модель настроек пользователя.
+    Содержит пользовательские предпочтения: язык, сложность, тема.
     """
     __tablename__ = 'user_preferences'
     
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), unique=True, nullable=False)  # Пользователь
-    language = Column(String(10), default='en')  # Язык
-    difficulty_preference = Column(String(20), default='normal')  # Предпочтительная сложность
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, unique=True)  # Связь с пользователем
+    language = Column(String(10), default='ru')  # Язык интерфейса
+    difficulty_preference = Column(String(20), default='normal')  # Предпочитаемая сложность
     theme = Column(String(20), default='light')  # Тема интерфейса
-    
-    user = relationship("Users", back_populates="preferences")
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Дата обновления
+
+    # Связи
+    user = relationship("Users", back_populates="preferences")  # Связь с пользователем
 
 class UserStatistics(db.Model):
     """
-    Статистика пользователя (количество диалогов, средний балл и т.д.).
+    Модель статистики пользователя.
+    Содержит статистические данные о активности пользователя.
     """
     __tablename__ = 'user_statistics'
     
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), unique=True, nullable=False)  # Пользователь
-    total_dialogs = Column(Integer, default=0)  # Всего диалогов
-    completed_scenarios = Column(Integer, default=0)  # Пройдено сценариев
-    total_time_spent = Column(Integer, default=0) # Время в секундах
-    average_score = Column(Float, default=0.0)  # Средний балл
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, unique=True)  # Связь с пользователем
+    total_dialogs = Column(Integer, default=0)  # Общее количество диалогов
+    completed_scenarios = Column(Integer, default=0)  # Завершенные сценарии
+    total_time_spent = Column(Integer, default=0)  # Общее время в секундах
+    average_score = Column(Float, default=0.0)  # Средняя оценка
     successful_dialogs = Column(Integer, default=0)  # Успешные диалоги
-    
-    user = relationship("Users", back_populates="statistics")
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Дата обновления
+
+    # Связи
+    user = relationship("Users", back_populates="statistics")  # Связь с пользователем
 
 class UserProgress(db.Model):
     """
-    Прогресс пользователя по конкретному сценарию.
+    Модель прогресса пользователя по сценариям.
+    Содержит информацию о прохождении сценариев пользователем.
     """
     __tablename__ = 'user_progress'
     
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # Пользователь
-    scenario_id = Column(Integer, ForeignKey('scenarios.id'), nullable=False)  # Сценарий
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # Связь с пользователем
+    scenario_id = Column(Integer, ForeignKey('scenarios.id'), nullable=False)  # Связь со сценарием
+    status = Column(String(20), default='in_progress')  # Статус прохождения
+    score = Column(Float, default=0.0)  # Оценка
+    attempts = Column(Integer, default=0)  # Количество попыток
+    best_score = Column(Float, default=0.0)  # Лучшая оценка
     current_step = Column(Integer, default=0)  # Текущий шаг
     completed = Column(Boolean, default=False)  # Завершён ли сценарий
-    status = Column(String(20), default='not_started')  # Статус
     progress_percentage = Column(Integer, default=0)  # Прогресс в процентах
-    updated_at = Column(DateTime, default=datetime.utcnow)  # Дата обновления
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Дата обновления
 
-    user = relationship("Users", back_populates="progress")
-    scenario = relationship("Scenario", back_populates="user_progress")
-
-class Message(db.Model):
-    """
-    Сообщение в рамках диалога (от пользователя, ИИ или системы).
-    """
-    __tablename__ = 'messages'
-
-    id = Column(Integer, primary_key=True)
-    dialog_id = Column(Integer, ForeignKey('dialogs.id'), nullable=False)  # Диалог
-    sender = Column(String(50), nullable=False)  # Отправитель ('user', 'ai', 'system')
-    text = Column(Text, nullable=False)  # Текст сообщения
-    timestamp = Column(DateTime, default=datetime.utcnow)  # Время отправки
-
-    dialog = relationship("Dialog", back_populates="message_objects")
+    # Связи
+    user = relationship("Users", back_populates="progress")  # Связь с пользователем
+    scenario = relationship("Scenario", back_populates="user_progress")  # Связь со сценарием
 
 class Badge(db.Model):
     """
-    Значок (badge), который может быть присвоен пользователю.
+    Модель значка/бейджа.
+    Содержит информацию о значках, которые могут получать пользователи.
     """
     __tablename__ = 'badges'
     
     id = Column(Integer, primary_key=True)
     name = Column(String(100), nullable=False, unique=True)  # Название значка
-    description = Column(String(500))  # Описание
-    icon_url = Column(String(255))  # URL иконки
-    created_at = Column(DateTime, default=datetime.utcnow)
+    description = Column(String(500))  # Описание значка
+    icon_url = Column(String(500))  # URL иконки значка
+    requirements = Column(JSON)  # Требования для получения значка
+    created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
 
-    user_badges = relationship("UserBadge", back_populates="badge")
+    # Связи
+    user_badges = relationship("UserBadge", back_populates="badge")  # Связь с пользовательскими значками
 
 class UserBadge(db.Model):
     """
-    Связь пользователя и значка (badge).
+    Модель связи пользователя и значка.
+    Содержит информацию о том, какие значки получил пользователь.
     """
     __tablename__ = 'user_badges'
     
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # Пользователь
-    badge_id = Column(Integer, ForeignKey('badges.id'), nullable=False)  # Значок
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # Связь с пользователем
+    badge_id = Column(Integer, ForeignKey('badges.id'), nullable=False)  # Связь со значком
+    earned_at = Column(DateTime, default=datetime.utcnow)  # Время получения значка
     awarded_at = Column(DateTime, default=datetime.utcnow)  # Дата присвоения
 
-    user = relationship("Users", back_populates="user_badges")
-    badge = relationship("Badge", back_populates="user_badges")
+    # Связи
+    user = relationship("Users", back_populates="user_badges")  # Связь с пользователем
+    badge = relationship("Badge", back_populates="user_badges")  # Связь со значком
 
-def create_default_organization():
+class Rating(db.Model):
     """
-    Создаёт организацию по умолчанию (id=1), если она ещё не существует.
-    Используется при инициализации базы данных.
-    Все сообщения выводятся через логгер приложения.
+    Модель рейтинга пользователя.
+    Содержит информацию о рейтингах пользователя по различным категориям.
+    """
+    __tablename__ = 'ratings'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)  # Связь с пользователем
+    score = Column(Float, nullable=False)  # Баллы
+    category = Column(String(50))  # Категория рейтинга
+    period = Column(String(20))  # Период (daily, weekly, monthly)
+    calculated_at = Column(DateTime, default=datetime.utcnow)  # Дата расчёта
+
+    # Связи
+    user = relationship("Users", back_populates="ratings")  # Связь с пользователем
+
+def init_default_data():
+    """
+    Инициализация данных по умолчанию.
+    Создает организацию по умолчанию, если она не существует.
     """
     from flask import current_app
     with db.session.begin():
@@ -297,3 +380,5 @@ def create_default_organization():
             current_app.logger.info("Организация по умолчанию создана.")
         else:
             current_app.logger.info("Организация по умолчанию уже существует.")
+
+
