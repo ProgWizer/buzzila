@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models.models import Users, UserRole, Dialog, Achievement, Scenario
+from models.models import Users, UserRole, Dialog, Achievement, Scenario, Organization
 from models.database import db
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import func
@@ -235,3 +235,291 @@ def get_top_users():
         .all()
     )
     return jsonify({"labels": [x[0] for x in top], "counts": [x[1] for x in top]}) 
+
+# ========== API ЭНДПОИНТЫ ДЛЯ ОРГАНИЗАЦИЙ ==========
+
+@admin_bp.route('/organizations', methods=['GET'])
+@jwt_required()
+def get_all_organizations():
+    """Получить список всех организаций"""
+    user_id = get_jwt_identity()
+    current_user = Users.query.get(user_id)
+
+    if not current_user or current_user.role.value != 'admin':
+        return jsonify({'error': 'Доступ запрещен'}), 403
+
+    organizations = Organization.query.all()
+    organizations_data = []
+    for org in organizations:
+        # Подсчитываем количество пользователей и сценариев
+        users_count = Users.query.filter_by(organization_id=org.id).count()
+        scenarios_count = Scenario.query.filter_by(organization_id=org.id).count()
+        
+        organizations_data.append({
+            'id': org.id,
+            'name': org.name,
+            'description': org.description,
+            'created_at': org.created_at.isoformat(),
+            'users_count': users_count,
+            'scenarios_count': scenarios_count
+        })
+    
+    return jsonify(organizations_data), 200
+
+@admin_bp.route('/organizations', methods=['POST'])
+@jwt_required()
+def create_organization():
+    """Создать новую организацию"""
+    user_id = get_jwt_identity()
+    current_user = Users.query.get(user_id)
+
+    if not current_user or current_user.role.value != 'admin':
+        return jsonify({'error': 'Доступ запрещен'}), 403
+
+    data = request.get_json()
+    name = data.get('name')
+    description = data.get('description', '')
+
+    if not name:
+        return jsonify({'error': 'Название организации обязательно'}), 400
+
+    try:
+        new_organization = Organization(
+            name=name,
+            description=description
+        )
+        db.session.add(new_organization)
+        db.session.commit()
+
+        return jsonify({
+            'id': new_organization.id,
+            'name': new_organization.name,
+            'description': new_organization.description,
+            'created_at': new_organization.created_at.isoformat()
+        }), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Организация с таким названием уже существует'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Ошибка при создании организации: {str(e)}'}), 500
+
+@admin_bp.route('/organizations/<int:org_id>', methods=['PUT'])
+@jwt_required()
+def update_organization(org_id):
+    """Обновить организацию"""
+    user_id = get_jwt_identity()
+    current_user = Users.query.get(user_id)
+
+    if not current_user or current_user.role.value != 'admin':
+        return jsonify({'error': 'Доступ запрещен'}), 403
+
+    organization = Organization.query.get(org_id)
+    if not organization:
+        return jsonify({'error': 'Организация не найдена'}), 404
+
+    data = request.get_json()
+    name = data.get('name')
+    description = data.get('description')
+
+    if name:
+        organization.name = name
+    if description is not None:
+        organization.description = description
+
+    try:
+        db.session.commit()
+        return jsonify({
+            'id': organization.id,
+            'name': organization.name,
+            'description': organization.description,
+            'created_at': organization.created_at.isoformat()
+        }), 200
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Организация с таким названием уже существует'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Ошибка при обновлении организации: {str(e)}'}), 500
+
+@admin_bp.route('/organizations/<int:org_id>', methods=['DELETE'])
+@jwt_required()
+def delete_organization(org_id):
+    """Удалить организацию"""
+    user_id = get_jwt_identity()
+    current_user = Users.query.get(user_id)
+
+    if not current_user or current_user.role.value != 'admin':
+        return jsonify({'error': 'Доступ запрещен'}), 403
+
+    organization = Organization.query.get(org_id)
+    if not organization:
+        return jsonify({'error': 'Организация не найдена'}), 404
+
+    # Проверяем, есть ли пользователи или сценарии в организации
+    users_count = Users.query.filter_by(organization_id=org_id).count()
+    scenarios_count = Scenario.query.filter_by(organization_id=org_id).count()
+    
+    if users_count > 0 or scenarios_count > 0:
+        return jsonify({
+            'error': f'Нельзя удалить организацию. В ней есть {users_count} пользователей и {scenarios_count} сценариев'
+        }), 400
+
+    try:
+        db.session.delete(organization)
+        db.session.commit()
+        return jsonify({'message': 'Организация успешно удалена'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Ошибка при удалении организации: {str(e)}'}), 500
+
+@admin_bp.route('/organizations/<int:org_id>/users', methods=['GET'])
+@jwt_required()
+def get_organization_users(org_id):
+    """Получить пользователей организации"""
+    user_id = get_jwt_identity()
+    current_user = Users.query.get(user_id)
+
+    if not current_user or current_user.role.value != 'admin':
+        return jsonify({'error': 'Доступ запрещен'}), 403
+
+    organization = Organization.query.get(org_id)
+    if not organization:
+        return jsonify({'error': 'Организация не найдена'}), 404
+
+    users = Users.query.filter_by(organization_id=org_id).all()
+    users_data = []
+    for user in users:
+        users_data.append({
+            'id': user.id,
+            'username': user.username,
+            'email': user.email,
+            'role': user.role.value,
+            'is_active': user.is_active,
+            'created_at': user.created_at.isoformat()
+        })
+
+    return jsonify(users_data), 200
+
+@admin_bp.route('/organizations/<int:org_id>/users', methods=['POST'])
+@jwt_required()
+def add_user_to_organization(org_id):
+    """Добавить пользователя в организацию"""
+    user_id = get_jwt_identity()
+    current_user = Users.query.get(user_id)
+
+    if not current_user or current_user.role.value != 'admin':
+        return jsonify({'error': 'Доступ запрещен'}), 403
+
+    organization = Organization.query.get(org_id)
+    if not organization:
+        return jsonify({'error': 'Организация не найдена'}), 404
+
+    data = request.get_json()
+    user_id_to_add = data.get('user_id')
+
+    if not user_id_to_add:
+        return jsonify({'error': 'ID пользователя обязателен'}), 400
+
+    user_to_add = Users.query.get(user_id_to_add)
+    if not user_to_add:
+        return jsonify({'error': 'Пользователь не найден'}), 404
+
+    if user_to_add.organization_id == org_id:
+        return jsonify({'error': 'Пользователь уже в этой организации'}), 400
+
+    try:
+        user_to_add.organization_id = org_id
+        db.session.commit()
+        return jsonify({'message': 'Пользователь успешно добавлен в организацию'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Ошибка при добавлении пользователя: {str(e)}'}), 500
+
+@admin_bp.route('/organizations/<int:org_id>/users/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def remove_user_from_organization(org_id, user_id):
+    """Удалить пользователя из организации"""
+    current_admin_id = get_jwt_identity()
+    current_admin = Users.query.get(current_admin_id)
+
+    if not current_admin or current_admin.role.value != 'admin':
+        return jsonify({'error': 'Доступ запрещен'}), 403
+
+    organization = Organization.query.get(org_id)
+    if not organization:
+        return jsonify({'error': 'Организация не найдена'}), 404
+
+    user = Users.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'Пользователь не найден'}), 404
+
+    if user.organization_id != org_id:
+        return jsonify({'error': 'Пользователь не состоит в этой организации'}), 400
+
+    try:
+        user.organization_id = None  # Убираем из организации
+        db.session.commit()
+        return jsonify({'message': 'Пользователь успешно удален из организации'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Ошибка при удалении пользователя: {str(e)}'}), 500
+
+@admin_bp.route('/organizations/<int:org_id>/scenarios', methods=['GET'])
+@jwt_required()
+def get_organization_scenarios(org_id):
+    """Получить сценарии организации"""
+    user_id = get_jwt_identity()
+    current_user = Users.query.get(user_id)
+
+    if not current_user or current_user.role.value != 'admin':
+        return jsonify({'error': 'Доступ запрещен'}), 403
+
+    organization = Organization.query.get(org_id)
+    if not organization:
+        return jsonify({'error': 'Организация не найдена'}), 404
+
+    scenarios = Scenario.query.filter_by(organization_id=org_id).all()
+    scenarios_data = []
+    for scenario in scenarios:
+        scenarios_data.append({
+            'id': scenario.id,
+            'name': scenario.name,
+            'description': scenario.description,
+            'category': scenario.category,
+            'subcategory': scenario.subcategory,
+            'is_active': scenario.is_active,
+            'created_at': scenario.created_at.isoformat()
+        })
+
+    return jsonify(scenarios_data), 200
+
+# Новый эндпоинт: отвязать сценарий от организации
+@admin_bp.route('/organizations/<int:org_id>/scenarios/<int:scenario_id>', methods=['DELETE'])
+@jwt_required()
+def detach_scenario_from_organization(org_id, scenario_id):
+    """Отвязать сценарий от организации (не удаляя сам сценарий)."""
+    current_admin_id = get_jwt_identity()
+    current_admin = Users.query.get(current_admin_id)
+
+    if not current_admin or current_admin.role.value != 'admin':
+        return jsonify({'error': 'Доступ запрещен'}), 403
+
+    organization = Organization.query.get(org_id)
+    if not organization:
+        return jsonify({'error': 'Организация не найдена'}), 404
+
+    scenario = Scenario.query.get(scenario_id)
+    if not scenario:
+        return jsonify({'error': 'Сценарий не найден'}), 404
+
+    if scenario.organization_id != org_id:
+        return jsonify({'error': 'Сценарий не принадлежит этой организации'}), 400
+
+    try:
+        scenario.organization_id = None
+        db.session.commit()
+        return jsonify({'message': 'Сценарий отвязан от организации'}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Не удалось отвязать сценарий: {str(e)}'}), 500 

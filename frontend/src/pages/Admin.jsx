@@ -132,7 +132,7 @@ const Admin = () => {
   const [showEditScenarioModal, setShowEditScenarioModal] = useState(false);
   const [currentScenario, setCurrentScenario] = useState({
     id: null,
-    name: '', // Изменено с title на name
+    name: '', 
     description: '',
     sphere: '',
     situation: '',
@@ -142,6 +142,18 @@ const Admin = () => {
     ai_role: '',
     ai_behavior: '',
     is_template: false,
+  });
+
+  // Состояние модалки шаблонов системных промптов
+  const [showPromptTemplatesModal, setShowPromptTemplatesModal] = useState(false);
+  const [promptTemplates, setPromptTemplates] = useState([]);
+  const [promptTemplateForm, setPromptTemplateForm] = useState({
+    name: '',
+    description: '',
+    content_start: '',
+    content_continue: '',
+    forbidden_words: '',
+    sections_json: '',
   });
 
   // 1. Добавляем состояния для списка иконок и загрузки
@@ -156,6 +168,7 @@ const Admin = () => {
   const [achievementSort, setAchievementSort] = useState('title');
   const [scenarioSearch, setScenarioSearch] = useState('');
   const [scenarioSort, setScenarioSort] = useState('name');
+  const [scenarioOrgFilter, setScenarioOrgFilter] = useState('all'); // all | global | orgId
 
   // Новое состояние для статистики
   const [stats, setStats] = useState(null);
@@ -190,6 +203,11 @@ const Admin = () => {
       s.name.toLowerCase().includes(scenarioSearch.toLowerCase()) ||
       s.description.toLowerCase().includes(scenarioSearch.toLowerCase())
     )
+    .filter(s => {
+      if (scenarioOrgFilter === 'all') return true;
+      if (scenarioOrgFilter === 'global') return !s.organization_id;
+      return String(s.organization_id || '') === String(scenarioOrgFilter);
+    })
     .sort((a, b) => {
       if (scenarioSort === 'name') {
         return a.name.localeCompare(b.name);
@@ -224,6 +242,72 @@ const Admin = () => {
 
   // 1. Добавляю новое состояние для модалки подробностей по сценариям
   const [showScenarioDetailsModal, setShowScenarioDetailsModal] = useState(false);
+
+  // НОВЫЕ СОСТОЯНИЯ ДЛЯ ОРГАНИЗАЦИЙ
+  const [organizations, setOrganizations] = useState([]);
+  const [loadingOrganizations, setLoadingOrganizations] = useState(false);
+  const [errorOrganizations, setErrorOrganizations] = useState(null);
+  const [showAddOrganizationModal, setShowAddOrganizationModal] = useState(false);
+  const [organizationFormData, setOrganizationFormData] = useState({
+    name: '',
+    description: '',
+  });
+  const [showEditOrganizationModal, setShowEditOrganizationModal] = useState(false);
+  const [currentOrganization, setCurrentOrganization] = useState({
+    id: null,
+    name: '',
+    description: '',
+  });
+  const [showOrganizationUsersModal, setShowOrganizationUsersModal] = useState(false);
+  const [organizationUsers, setOrganizationUsers] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [showAddUserToOrgModal, setShowAddUserToOrgModal] = useState(false);
+  // Модалка сценариев организации
+  const [showOrgScenariosModal, setShowOrgScenariosModal] = useState(false);
+  const [currentOrgForScenarios, setCurrentOrgForScenarios] = useState(null);
+  const [orgAssignedScenarios, setOrgAssignedScenarios] = useState([]);
+  const [orgAvailableScenarios, setOrgAvailableScenarios] = useState([]);
+  const [loadingOrgScenarios, setLoadingOrgScenarios] = useState(false);
+
+  // Поиск и пагинация организаций
+  const [organizationsSearchQuery, setOrganizationsSearchQuery] = useState('');
+  const [filteredOrganizations, setFilteredOrganizations] = useState([]);
+  const [orgCurrentPage, setOrgCurrentPage] = useState(1);
+  const orgPerPage = 10;
+
+  useEffect(() => {
+    setFilteredOrganizations(
+      (organizations || []).filter(org =>
+        (org.name || '').toLowerCase().includes(organizationsSearchQuery.toLowerCase()) ||
+        (org.description || '').toLowerCase().includes(organizationsSearchQuery.toLowerCase())
+      )
+    );
+    setOrgCurrentPage(1);
+  }, [organizations, organizationsSearchQuery]);
+
+  const orgTotalPages = Math.ceil((filteredOrganizations.length || 0) / orgPerPage) || 1;
+  const orgIndexOfLast = orgCurrentPage * orgPerPage;
+  const orgIndexOfFirst = orgIndexOfLast - orgPerPage;
+  const paginatedOrganizations = filteredOrganizations.slice(orgIndexOfFirst, orgIndexOfLast);
+
+  // Карта: id организации -> число сценариев
+  const orgIdToScenarioCount = React.useMemo(() => {
+    const map = {};
+    for (const sc of scenarios || []) {
+      const oid = sc.organization_id || null;
+      if (oid) map[oid] = (map[oid] || 0) + 1;
+    }
+    return map;
+  }, [scenarios]);
+
+  // Карта: id организации -> имя (для таблицы сценариев)
+  const orgIdToName = React.useMemo(() => {
+    const map = {};
+    for (const org of organizations || []) {
+      map[org.id] = org.name;
+    }
+    return map;
+  }, [organizations]);
 
   // 2. Функция для загрузки иконок
   const fetchAvailableIcons = async () => {
@@ -354,6 +438,7 @@ const Admin = () => {
     fetchUsers();
     fetchAchievements();
     fetchScenarios(); // Вызываем fetchScenarios при загрузке компонента
+    fetchOrganizations(); // Загружаем организации
   }, []);
 
   useEffect(() => {
@@ -849,7 +934,7 @@ const Admin = () => {
       setShowAddScenarioModal(false);
       // Очищаем форму
       setScenarioFormData({
-        name: '', // Изменено с title на name
+        name: '', 
         description: '',
         sphere: '',
         situation: '',
@@ -1078,6 +1163,417 @@ const Admin = () => {
     }
   }, [drillDownModal]);
 
+  // ========== ФУНКЦИИ ДЛЯ РАБОТЫ С ОРГАНИЗАЦИЯМИ ==========
+
+  // Загрузка всех организаций
+  const fetchOrganizations = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации не найден.');
+      }
+
+      setLoadingOrganizations(true);
+      const response = await fetch('/api/admin/organizations', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить организации.');
+      }
+
+      const data = await response.json();
+      setOrganizations(data);
+    } catch (err) {
+      setErrorOrganizations(err.message);
+      console.error('Ошибка при загрузке организаций:', err);
+    } finally {
+      setLoadingOrganizations(false);
+    }
+  };
+
+  // Создание новой организации
+  const handleAddOrganizationSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации не найден.');
+      }
+
+      setLoadingOrganizations(true);
+      const response = await fetch('/api/admin/organizations', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(organizationFormData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Не удалось создать организацию.');
+      }
+
+      toast.success('Организация успешно создана!');
+      setShowAddOrganizationModal(false);
+      // Очищаем форму
+      setOrganizationFormData({
+        name: '',
+        description: '',
+      });
+      fetchOrganizations(); // Обновляем список организаций
+    } catch (err) {
+      console.error('Ошибка при создании организации:', err);
+      setErrorOrganizations(err.message);
+      toast.error(`Ошибка: ${err.message}`);
+    } finally {
+      setLoadingOrganizations(false);
+    }
+  };
+
+  // Редактирование организации
+  const handleEditOrganizationClick = (organization) => {
+    setCurrentOrganization({
+      id: organization.id,
+      name: organization.name,
+      description: organization.description,
+    });
+    setShowEditOrganizationModal(true);
+  };
+
+  const handleEditOrganizationSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации не найден.');
+      }
+
+      setLoadingOrganizations(true);
+      const response = await fetch(`/api/admin/organizations/${currentOrganization.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: currentOrganization.name,
+          description: currentOrganization.description,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Не удалось обновить организацию.');
+      }
+
+      toast.success('Организация успешно обновлена!');
+      setShowEditOrganizationModal(false);
+      fetchOrganizations(); // Обновляем список организаций
+    } catch (err) {
+      console.error('Ошибка при обновлении организации:', err);
+      setErrorOrganizations(err.message);
+      toast.error(`Ошибка: ${err.message}`);
+    } finally {
+      setLoadingOrganizations(false);
+    }
+  };
+
+  // Удаление организации
+  const handleDeleteOrganization = async (organizationId) => {
+    setConfirmModal({
+      show: true,
+      text: 'Вы уверены, что хотите удалить эту организацию? Все связи (пользователи, сценарии) будут удалены.',
+      onConfirm: async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+          // 1) Отвязать пользователей
+          const usersRes = await fetch(`/api/admin/organizations/${organizationId}/users`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const usersData = usersRes.ok ? await usersRes.json() : [];
+          for (const u of (Array.isArray(usersData) ? usersData : (usersData.users || []))) {
+            await fetch(`/api/admin/organizations/${organizationId}/users/${u.id}`, {
+              method: 'DELETE',
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+          }
+          // 2) Отвязать сценарии (через API или fallback PUT)
+          const orgScRes = await fetch(`/api/admin/organizations/${organizationId}/scenarios`, { headers: { 'Authorization': `Bearer ${token}` } });
+          const assigned = orgScRes.ok ? await orgScRes.json() : [];
+          for (const s of assigned) {
+            const delRes = await fetch(`/api/admin/organizations/${organizationId}/scenarios/${s.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            if (!delRes.ok) {
+              // fallback PUT organization_id=null
+              await fetch(`/api/scenarios/${s.id}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  id: s.id,
+                  name: s.name,
+                  description: s.description,
+                  sphere: s.sphere,
+                  situation: s.situation,
+                  mood: s.mood,
+                  language: s.language,
+                  user_role: s.user_role,
+                  ai_role: s.ai_role,
+                  ai_behavior: s.ai_behavior,
+                  is_template: s.is_template,
+                  organization_id: null,
+                })
+              });
+            }
+          }
+          // 3) Удалить организацию
+          const delOrgRes = await fetch(`/api/admin/organizations/${organizationId}`, {
+        method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+          if (!delOrgRes.ok) {
+            const errText = await delOrgRes.text();
+            throw new Error(errText || 'Не удалось удалить организацию');
+      }
+          toast.success('Организация успешно удалена');
+          fetchOrganizations();
+    } catch (err) {
+      toast.error(`Ошибка: ${err.message}`);
+        } finally {
+          setConfirmModal({ show: false, onConfirm: null, text: '' });
+    }
+      }
+    });
+  };
+
+  // Загрузка пользователей организации
+  const handleViewOrganizationUsers = async (organizationId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации не найден.');
+      }
+
+      const response = await fetch(`/api/admin/organizations/${organizationId}/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить пользователей организации.');
+      }
+
+      const data = await response.json();
+      setOrganizationUsers(data);
+      setCurrentOrganization({ ...currentOrganization, id: organizationId });
+      setShowOrganizationUsersModal(true);
+    } catch (err) {
+      console.error('Ошибка при загрузке пользователей организации:', err);
+      toast.error(`Ошибка: ${err.message}`);
+    }
+  };
+
+  // Загрузка доступных пользователей (без организации)
+  const fetchAvailableUsers = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации не найден.');
+      }
+
+      const response = await fetch('/api/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Не удалось загрузить пользователей.');
+      }
+
+      const data = await response.json();
+      // Фильтруем пользователей без организации
+      setAvailableUsers(data.filter(user => !user.organization_id));
+    } catch (err) {
+      console.error('Ошибка при загрузке доступных пользователей:', err);
+    }
+  };
+
+  // Добавление пользователя в организацию
+  const handleAddUserToOrganization = async (organizationId, userId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации не найден.');
+      }
+
+      const response = await fetch(`/api/admin/organizations/${organizationId}/users`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Не удалось добавить пользователя в организацию.');
+      }
+
+      toast.success('Пользователь успешно добавлен в организацию!');
+      setShowAddUserToOrgModal(false);
+      fetchAvailableUsers(); // Обновляем список доступных пользователей
+      fetchOrganizations(); // Обновляем список организаций
+      handleViewOrganizationUsers(organizationId); // Обновляем список пользователей организации
+    } catch (err) {
+      console.error('Ошибка при добавлении пользователя в организацию:', err);
+      toast.error(`Ошибка: ${err.message}`);
+    }
+  };
+
+  // Удаление пользователя из организации
+  const handleRemoveUserFromOrganization = async (organizationId, userId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('Токен авторизации не найден.');
+      }
+
+      const response = await fetch(`/api/admin/organizations/${organizationId}/users/${userId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Не удалось удалить пользователя из организации.');
+      }
+
+      toast.success('Пользователь успешно удален из организации!');
+      handleViewOrganizationUsers(organizationId); // Обновляем список пользователей организации
+      fetchAvailableUsers(); // Обновляем список доступных пользователей
+      fetchOrganizations(); // Обновляем список организаций
+    } catch (err) {
+      console.error('Ошибка при удалении пользователя из организации:', err);
+      toast.error(`Ошибка: ${err.message}`);
+    }
+  };
+
+  const handleOpenOrgScenarios = async (organization) => {
+    setCurrentOrgForScenarios(organization);
+    setShowOrgScenariosModal(true);
+    setLoadingOrgScenarios(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const [assignedRes, allRes] = await Promise.all([
+        fetch(`/api/admin/organizations/${organization.id}/scenarios`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('/api/scenarios', { headers: { 'Authorization': `Bearer ${token}` } }),
+      ]);
+      const assigned = assignedRes.ok ? await assignedRes.json() : [];
+      const all = allRes.ok ? await allRes.json() : [];
+      const assignedIds = new Set(assigned.map(s => s.id));
+      setOrgAssignedScenarios(assigned);
+      setOrgAvailableScenarios(all.filter(s => !assignedIds.has(s.id)));
+    } catch (e) {
+      setOrgAssignedScenarios([]);
+      setOrgAvailableScenarios([]);
+    } finally {
+      setLoadingOrgScenarios(false);
+    }
+  };
+
+  const handleAssignScenarioToOrg = async (organizationId, scenarioId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/admin/organizations/${organizationId}/scenarios`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario_id: scenarioId })
+      });
+      if (!res.ok) {
+        // Fallback: обновим сам сценарий, установив organization_id
+        const scenario = orgAvailableScenarios.find(s => s.id === scenarioId);
+        if (!scenario) throw new Error('Сценарий не найден');
+        const putRes = await fetch(`/api/scenarios/${scenarioId}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: scenario.id,
+            name: scenario.name,
+            description: scenario.description,
+            sphere: scenario.sphere,
+            situation: scenario.situation,
+            mood: scenario.mood,
+            language: scenario.language,
+            user_role: scenario.user_role,
+            ai_role: scenario.ai_role,
+            ai_behavior: scenario.ai_behavior,
+            is_template: scenario.is_template,
+            organization_id: organizationId,
+          }),
+        });
+        if (!putRes.ok) throw new Error('Не удалось назначить сценарий (PUT)');
+      }
+      const scenario = orgAvailableScenarios.find(s => s.id === scenarioId);
+      setOrgAssignedScenarios(prev => [...prev, scenario]);
+      setOrgAvailableScenarios(prev => prev.filter(s => s.id !== scenarioId));
+      toast.success('Сценарий назначен организации');
+    } catch (e) {
+      toast.error('Ошибка при назначении сценария');
+    }
+  };
+
+  const handleUnassignScenarioFromOrg = async (organizationId, scenarioId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/admin/organizations/${organizationId}/scenarios/${scenarioId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) {
+        // Fallback: обновим сценарий, убрав organization_id
+        const scenario = orgAssignedScenarios.find(s => s.id === scenarioId);
+        if (!scenario) throw new Error('Сценарий не найден');
+        const putRes = await fetch(`/api/scenarios/${scenarioId}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: scenario.id,
+            name: scenario.name,
+            description: scenario.description,
+            sphere: scenario.sphere,
+            situation: scenario.situation,
+            mood: scenario.mood,
+            language: scenario.language,
+            user_role: scenario.user_role,
+            ai_role: scenario.ai_role,
+            ai_behavior: scenario.ai_behavior,
+            is_template: scenario.is_template,
+            organization_id: null,
+          }),
+        });
+        if (!putRes.ok) throw new Error('Не удалось удалить сценарий из организации (PUT)');
+      }
+      const scenario = orgAssignedScenarios.find(s => s.id === scenarioId);
+      setOrgAvailableScenarios(prev => [scenario, ...prev]);
+      setOrgAssignedScenarios(prev => prev.filter(s => s.id !== scenarioId));
+      toast.success('Сценарий удалён из организации');
+    } catch (e) {
+      toast.error('Ошибка при удалении сценария');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F1F8FF] dark:bg-gray-900 py-12 flex items-center justify-center transition-colors">
@@ -1247,7 +1743,110 @@ const Admin = () => {
             </table>
           </div>
         </div>
-        {/* Карточка достижений */}
+        {/* Карточка организаций */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-2 sm:p-4 mb-2 sm:mb-4 w-full max-w-full md:max-w-[900px] transition-all">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center mb-2 sm:mb-4 gap-1 sm:gap-0">
+            <UserGroupIcon className="w-6 h-6 sm:w-10 sm:h-10 text-blue-800 dark:text-blue-300 mr-0 sm:mr-4" />
+            <span className="text-lg sm:text-2xl font-extrabold text-blue-900 dark:text-blue-200">Организации</span>
+          </div>
+
+          {/* Фильтр и добавление */}
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center mb-2 sm:mb-3 gap-1 sm:gap-0">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-light">Фильтр</span>
+              <input
+                type="text"
+                placeholder="Поиск по названию или описанию"
+                className="border border-gray-300 dark:border-gray-700 rounded-[8px] px-2 py-2 focus:outline-none focus:border-[#0D47A1] dark:focus:border-blue-400 w-full sm:w-64 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors text-xs sm:text-base"
+                value={organizationsSearchQuery}
+                onChange={(e) => setOrganizationsSearchQuery(e.target.value)}
+              />
+            </div>
+            <button 
+              onClick={() => setShowAddOrganizationModal(true)}
+              className="bg-green-500 text-white rounded-[8px] px-3 py-1 hover:bg-green-700 transition min-w-[140px] text-xs sm:text-base"
+            >
+              Добавить организацию
+            </button>
+          </div>
+
+          {/* Таблица организаций */}
+          <div className="overflow-x-auto rounded-[10px] border border-gray-100 dark:border-gray-700 mb-2">
+            <table className="min-w-[500px] sm:min-w-full bg-white dark:bg-gray-800 rounded-[10px] text-xs sm:text-sm transition-colors">
+              <thead>
+                <tr className="bg-[#F1F8FF] dark:bg-gray-700 text-[#0D47A1] dark:text-blue-200 text-left">
+                  <th className="px-2 py-2 font-semibold">Название</th>
+                  <th className="px-2 py-2 font-semibold">Описание</th>
+                  <th className="px-2 py-2 font-semibold hidden xs:table-cell">Пользователей</th>
+                  <th className="px-2 py-2 font-semibold hidden xs:table-cell">Сценариев</th>
+                  <th className="px-2 py-2 font-semibold">Действия</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loadingOrganizations ? (
+                  <tr><td colSpan="5" className="px-4 py-2 text-center">Загрузка организаций...</td></tr>
+                ) : errorOrganizations ? (
+                  <tr><td colSpan="5" className="px-4 py-2 text-center text-red-600">Ошибка: {errorOrganizations}</td></tr>
+                ) : filteredOrganizations.length === 0 ? (
+                  <tr><td colSpan="5" className="px-4 py-2 text-center text-gray-400 dark:text-gray-500">Нет доступных организаций.</td></tr>
+                ) : (
+                  paginatedOrganizations.map((organization, idx) => (
+                    <tr
+                      key={organization.id}
+                      className={`border-t border-gray-100 dark:border-gray-700 transition ${idx % 2 === 0 ? 'bg-white dark:bg-gray-900/80' : 'bg-gray-50 dark:bg-gray-900/60'} hover:bg-[#F1F8FF] dark:hover:bg-gray-800/70`}
+                    >
+                      <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{organization.name}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{organization.description}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden xs:table-cell">{organization.user_count || 0}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden xs:table-cell">{orgIdToScenarioCount[organization.id] || 0}</td>
+                      <td className="px-4 py-2">
+                        <div className="flex gap-2 items-center">
+                          <button 
+                            onClick={() => handleViewOrganizationUsers(organization.id)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white rounded-[8px] px-3 py-1 transition flex items-center"
+                          >
+                            <UserGroupIcon className="w-4 h-4 mr-1" />
+                            Пользователи
+                          </button>
+                          <button 
+                            onClick={() => handleOpenOrgScenarios(organization)}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-[8px] px-3 py-1 transition flex items-center"
+                          >
+                            <ChartBarIcon className="w-4 h-4 mr-1" />
+                            Сценарии
+                          </button>
+                          <button 
+                            onClick={() => handleEditOrganizationClick(organization)}
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-[8px] px-3 py-1 transition flex items-center"
+                          >
+                            <PencilIcon className="w-4 h-4 mr-1" />
+                            Редактировать
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteOrganization(organization.id)}
+                            className="bg-red-500 hover:bg-red-700 text-white rounded-[8px] px-3 py-1 transition flex items-center"
+                          >
+                            <TrashIcon className="w-4 h-4 mr-1" />
+                            Удалить
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          {/* Пагинация организаций */}
+          <div className="flex justify-end gap-2 mt-2">
+            <button onClick={() => setOrgCurrentPage(p => Math.max(1, p-1))} disabled={orgCurrentPage===1} className="px-3 py-1 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 disabled:opacity-50">Назад</button>
+            {[...Array(orgTotalPages)].map((_,i) => (
+              <button key={i} onClick={()=>setOrgCurrentPage(i+1)} className={`px-3 py-1 rounded ${orgCurrentPage===i+1 ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200'}`}>{i+1}</button>
+            ))}
+            <button onClick={() => setOrgCurrentPage(p => Math.min(orgTotalPages, p+1))} disabled={orgCurrentPage===orgTotalPages} className="px-3 py-1 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-200 disabled:opacity-50">Вперёд</button>
+          </div>
+        </div>
+        {/* Карточка организаций */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl hover:shadow-3xl border border-gray-200 dark:border-gray-700 p-2 sm:p-4 mb-2 sm:mb-4 w-full max-w-full md:max-w-[900px] transition-all">
           <div className="flex flex-col sm:flex-row items-start sm:items-center mb-2 sm:mb-4 gap-1 sm:gap-0">
             <ChartBarIcon className="w-6 h-6 sm:w-10 sm:h-10 text-blue-800 dark:text-blue-300 mr-0 sm:mr-4" />
@@ -1367,6 +1966,17 @@ const Admin = () => {
               value={scenarioSearch}
               onChange={e => setScenarioSearch(e.target.value)}
             />
+            <select
+              className="border border-gray-300 dark:border-gray-700 rounded-[8px] px-2 py-2 text-xs sm:text-base bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
+              value={scenarioOrgFilter}
+              onChange={e => setScenarioOrgFilter(e.target.value)}
+            >
+              <option value="all">Все организации</option>
+              <option value="global">Общие (без организации)</option>
+              {organizations.map(org => (
+                <option key={org.id} value={String(org.id)}>{org.name}</option>
+              ))}
+            </select>
             <button
               className={`px-3 py-1 rounded-lg font-semibold transition text-xs sm:text-base ${scenarioSort === 'name' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-700'} hover:bg-blue-700`}
               onClick={() => setScenarioSort('name')}
@@ -1390,6 +2000,7 @@ const Admin = () => {
                   <th className="px-2 py-2 font-semibold">Описание</th>
                   <th className="px-2 py-2 font-semibold hidden xs:table-cell">Сфера</th>
                   <th className="px-2 py-2 font-semibold hidden sm:table-cell">Ситуация</th>
+                  <th className="px-2 py-2 font-semibold hidden md:table-cell">Организация</th>
                   <th className="px-2 py-2 font-semibold hidden md:table-cell">Шаблон</th>
                   <th className="px-2 py-2 font-semibold">Действия</th>
                 </tr>
@@ -1407,10 +2018,16 @@ const Admin = () => {
                       key={scenario.id}
                       className={`border-t border-gray-100 dark:border-gray-700 transition ${idx % 2 === 0 ? 'bg-white dark:bg-gray-900/80' : 'bg-gray-50 dark:bg-gray-900/60'} hover:bg-[#F1F8FF] dark:hover:bg-gray-800/70`}
                     >
-                      <td className="px-4 py-2 text-gray-900 dark:text-gray-100">{scenario.name}</td>
+                      <td className="px-4 py-2 text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <span>{scenario.name}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] ${scenario.organization_id ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'}`}>
+                          {scenario.organization_id ? (orgIdToName[scenario.organization_id] || 'Орг.') : 'Общий'}
+                        </span>
+                      </td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{scenario.description}</td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden xs:table-cell">{scenario.sphere}</td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{scenario.situation}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden md:table-cell">{scenario.organization_id ? (orgIdToName[scenario.organization_id] || '-') : '—'}</td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden md:table-cell">{scenario.is_template ? 'Да' : 'Нет'}</td>
                       <td className="px-4 py-2">
                         <div className="flex gap-2 items-center">
@@ -2273,6 +2890,15 @@ const Admin = () => {
                   placeholder="Например: недовольный клиент, спокойный сотрудник"
                 ></textarea>
               </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowPromptTemplatesModal(true)}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Управление шаблонами системных промптов
+                </button>
+              </div>
               <div className="flex items-center gap-2 mt-2">
                 <input
                   type="checkbox"
@@ -2416,7 +3042,7 @@ const Admin = () => {
                   placeholder="Например: администратор отеля, менеджер"
                 />
               </div>
-              <div className="mb-4">
+              <div>
                 <label htmlFor="edit-scenario-ai-behavior" className="block text-gray-700 text-sm font-bold mb-2">Поведение AI:</label>
                 <textarea
                   id="edit-scenario-ai-behavior"
@@ -2438,6 +3064,15 @@ const Admin = () => {
                   className="mr-2 leading-tight"
                 />
                 <label htmlFor="edit-scenario-is-template" className="text-gray-700 text-sm font-bold">Является шаблоном (не будет отображаться для пользователей)</label>
+              </div>
+              <div className="flex justify-end mb-4">
+                <button
+                  type="button"
+                  onClick={() => setShowPromptTemplatesModal(true)}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Управление шаблонами системных промптов
+                </button>
               </div>
               <div className="flex justify-end">
                 <button
@@ -2543,6 +3178,259 @@ const Admin = () => {
                 Закрыть
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Модальное окно добавления организации */}
+      {showAddOrganizationModal && (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-60 flex items-center justify-center z-50 transition-colors">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-2 sm:p-6 w-full max-w-xs sm:max-w-md max-h-[90vh] overflow-y-auto border border-gray-200 dark:border-gray-700 transition-colors relative animate-fade-in">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Добавить организацию</h2>
+              <button onClick={() => setShowAddOrganizationModal(false)} className="text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors">
+                <XMarkIcon className="w-7 h-7" />
+              </button>
+            </div>
+            <form onSubmit={handleAddOrganizationSubmit} className="space-y-6">
+              <div>
+                <label htmlFor="organization-name" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Название:</label>
+                <input
+                  type="text"
+                  id="organization-name"
+                  name="name"
+                  value={organizationFormData.name}
+                  onChange={(e) => setOrganizationFormData({ ...organizationFormData, name: e.target.value })}
+                  className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
+                  required
+                  placeholder="Введите название организации"
+                />
+              </div>
+              <div>
+                <label htmlFor="organization-description" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Описание:</label>
+                <textarea
+                  id="organization-description"
+                  name="description"
+                  value={organizationFormData.description}
+                  onChange={(e) => setOrganizationFormData({ ...organizationFormData, description: e.target.value })}
+                  className="w-full min-h-[60px] h-24 px-4 py-3 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm resize-none"
+                  required
+                  placeholder="Введите описание организации"
+                ></textarea>
+              </div>
+              <div className="flex justify-end gap-3 mt-8">
+                <button
+                  type="button"
+                  onClick={() => setShowAddOrganizationModal(false)}
+                  className="bg-gray-300 dark:bg-gray-700 hover:bg-gray-400 dark:hover:bg-gray-600 text-black dark:text-gray-100 font-bold py-2 px-6 rounded-xl transition-colors shadow"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-xl transition-colors shadow"
+                >
+                  Добавить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно редактирования организации */}
+      {showEditOrganizationModal && currentOrganization && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-2 sm:p-6 w-full max-w-xs sm:max-w-md max-h-[90vh] overflow-y-auto relative">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Редактировать организацию: {currentOrganization.name}</h2>
+              <button onClick={() => setShowEditOrganizationModal(false)} className="text-gray-500 hover:text-gray-700">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            <form onSubmit={handleEditOrganizationSubmit}>
+              <div className="mb-4">
+                <label htmlFor="edit-organization-name" className="block text-gray-700 text-sm font-bold mb-2">Название:</label>
+                <input
+                  type="text"
+                  id="edit-organization-name"
+                  name="name"
+                  value={currentOrganization.name}
+                  onChange={(e) => setCurrentOrganization({ ...currentOrganization, name: e.target.value })}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label htmlFor="edit-organization-description" className="block text-gray-700 text-sm font-bold mb-2">Описание:</label>
+                <textarea
+                  id="edit-organization-description"
+                  name="description"
+                  value={currentOrganization.description}
+                  onChange={(e) => setCurrentOrganization({ ...currentOrganization, description: e.target.value })}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline h-32 resize-none"
+                  required
+                ></textarea>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowEditOrganizationModal(false)}
+                  className="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded mr-2"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                >
+                  Сохранить
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно пользователей организации */}
+      {showOrganizationUsersModal && currentOrganization && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Пользователи организации: {currentOrganization.name}</h2>
+              <button onClick={() => setShowOrganizationUsersModal(false)} className="text-gray-500 hover:text-gray-700">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <button 
+                onClick={() => {
+                  fetchAvailableUsers();
+                  setShowAddUserToOrgModal(true);
+                }}
+                className="bg-green-500 text-white rounded px-3 py-1 hover:bg-green-700 transition"
+              >
+                Добавить пользователя
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="text-left text-blue-900 dark:text-blue-200">
+                    <th className="py-2 pr-4">Имя</th>
+                    <th className="py-2 pr-4">Email</th>
+                    <th className="py-2 pr-4">Роль</th>
+                    <th className="py-2">Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {organizationUsers.map(user => (
+                    <tr key={user.id} className="border-b border-gray-200 dark:border-gray-700">
+                      <td className="py-2 pr-4 font-medium text-gray-800 dark:text-gray-100">{user.username}</td>
+                      <td className="py-2 pr-4 text-gray-700 dark:text-gray-300">{user.email}</td>
+                      <td className="py-2 pr-4 text-gray-700 dark:text-gray-300">{user.role}</td>
+                      <td className="py-2">
+                        <button 
+                          onClick={() => handleRemoveUserFromOrganization(currentOrganization.id, user.id)}
+                          className="bg-red-500 text-white rounded px-2 py-1 text-sm hover:bg-red-700 transition"
+                        >
+                          Удалить
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно добавления пользователя в организацию */}
+      {showAddUserToOrgModal && currentOrganization && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Добавить пользователя в организацию</h2>
+              <button onClick={() => setShowAddUserToOrgModal(false)} className="text-gray-500 hover:text-gray-700">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="max-h-60 overflow-y-auto">
+              {availableUsers.map(user => (
+                <div key={user.id} className="flex justify-between items-center py-2 border-b border-gray-200 dark:border-gray-700">
+                  <span>{user.username} ({user.email})</span>
+                  <button 
+                    onClick={() => handleAddUserToOrganization(currentOrganization.id, user.id)}
+                    className="bg-green-500 text-white rounded px-2 py-1 text-sm hover:bg-green-700 transition"
+                  >
+                    Добавить
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно сценариев организации */}
+      {showOrgScenariosModal && currentOrgForScenarios && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold">Сценарии организации: {currentOrgForScenarios.name}</h2>
+              <button onClick={() => setShowOrgScenariosModal(false)} className="text-gray-500 hover:text-gray-700">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            {loadingOrgScenarios ? (
+              <div className="text-blue-500 animate-pulse">Загрузка...</div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Назначенные</h3>
+                  <ul className="border rounded p-2 max-h-72 overflow-y-auto">
+                    {orgAssignedScenarios.length === 0 ? (
+                      <li className="text-gray-400">Нет назначенных сценариев</li>
+                    ) : (
+                      orgAssignedScenarios.map(s => (
+                        <li key={s.id} className="flex justify-between items-center py-1">
+                          <span>{s.name}</span>
+                          <button
+                            onClick={() => handleUnassignScenarioFromOrg(currentOrgForScenarios.id, s.id)}
+                            className="bg-red-500 hover:bg-red-700 text-white rounded px-2 py-1 text-sm"
+                          >
+                            Удалить
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Доступные</h3>
+                  <ul className="border rounded p-2 max-h-72 overflow-y-auto">
+                    {orgAvailableScenarios.length === 0 ? (
+                      <li className="text-gray-400">Нет доступных сценариев</li>
+                    ) : (
+                      orgAvailableScenarios.map(s => (
+                        <li key={s.id} className="flex justify-between items-center py-1">
+                          <span>{s.name}</span>
+                          <button
+                            onClick={() => handleAssignScenarioToOrg(currentOrgForScenarios.id, s.id)}
+                            className="bg-green-500 hover:bg-green-700 text-white rounded px-2 py-1 text-sm"
+                          >
+                            Добавить
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
