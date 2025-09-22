@@ -2,7 +2,6 @@ from flask import Flask, jsonify, send_from_directory
 from flask_cors import CORS
 from config import Config, redis_client
 from models.database import db
-from models.models import create_default_organization 
 from utils.redis_client import init_redis
 from flask_jwt_extended import JWTManager
 from flask_session import Session
@@ -10,6 +9,7 @@ import os
 import logging
 from datetime import timedelta
 import sys
+from sqlalchemy import text
 
 # Создаем приложение Flask
 app = Flask(__name__)
@@ -24,8 +24,7 @@ db.init_app(app)
 
 with app.app_context():
     db.create_all()  # Создаем все таблицы в базе данных
-    create_default_organization()  # Создаем организацию по умолчанию, если её нет
-
+    
 # Настройка логирования (вывод в stdout)
 app.logger.handlers.clear()
 handler = logging.StreamHandler(sys.stdout)
@@ -72,10 +71,10 @@ def invalid_token_response(callback):
 
 # Обработчик: истёкший токен JWT
 @jwt.expired_token_loader
-def expired_token_response(callback):
+def expired_token_response(jwt_header, jwt_data):
     """Возвращает ошибку, если токен JWT истёк."""
-    app.logger.warning(f"JWT Expired Token Error: {callback}")
-    return jsonify({'msg': callback}), 401
+    app.logger.warning("JWT Expired Token Error: token has expired")
+    return jsonify({'msg': 'Token has expired'}), 401
 
 # Обработчик: отозванный токен JWT
 @jwt.revoked_token_loader
@@ -121,6 +120,7 @@ from routes.achievements import achievements_admin_bp
 from routes.admin import admin_bp
 from routes.uploads import uploads_bp
 from routes.activity import activity_bp
+from routes.prompt_templates import prompt_templates_bp
 
 # Регистрируем Blueprints (разделяем API по модулям)
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -132,34 +132,38 @@ app.register_blueprint(achievements_admin_bp, url_prefix='/api')
 app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(uploads_bp, url_prefix='/api')
 app.register_blueprint(activity_bp)
+app.register_blueprint(prompt_templates_bp, url_prefix='/api')
 
 # Хелс-чек эндпоинт для проверки состояния приложения и БД
 @app.route('/health')
 def health_check():
-    """Проверяет подключение к базе данных и возвращает статус приложения."""
+    """
+    Проверка состояния приложения и подключения к базе данных.
+    Возвращает статус 'healthy' если все работает корректно.
+    """
     try:
-        db.session.execute('SELECT 1')  # Проверяем подключение к базе данных
-        return jsonify({'status': 'healthy', 'database': 'connected'}), 200
+        # Проверяем подключение к базе данных
+        db.session.execute(text('SELECT 1'))
+        return jsonify({'status': 'healthy', 'database': 'connected'})
     except Exception as e:
-        app.logger.error(f"Health check failed: {str(e)}")
+        app.logger.error(f"Health check failed: {e}")
         return jsonify({'status': 'unhealthy', 'database': 'disconnected'}), 500
 
-# Логируем все зарегистрированные маршруты приложения
-app.logger.info("=== Зарегистрированные маршруты ===")
-for rule in app.url_map.iter_rules():
-    app.logger.info(f"{rule.methods} {rule.rule}")
-app.logger.info("====================================")
-
-# Явная отдача статических файлов (если не работает стандартная статика Flask)
+# Обработчик для статических файлов (если нужно)
 @app.route('/static/<path:filename>')
 def static_files(filename):
-    """Отдаёт статические файлы из папки static."""
-    return send_from_directory(os.path.join(app.root_path, 'static'), filename)
+    """
+    Обработчик для статических файлов.
+    """
+    return send_from_directory('static', filename)
 
-# Запуск приложения (только для режима разработки)
+# Обработчик для корневого пути (если нужно)
+@app.route('/')
+def index():
+    """
+    Корневой путь приложения.
+    """
+    return jsonify({'message': 'Buzzila API Server', 'status': 'running'})
+
 if __name__ == '__main__':
-    app.run(
-        debug=os.getenv('DEBUG', 'True').lower() == 'true',
-        host=os.getenv('HOST', '0.0.0.0'),
-        port=int(os.getenv('PORT', 5000))
-    )
+    app.run(debug=True, host='0.0.0.0', port=5000)
