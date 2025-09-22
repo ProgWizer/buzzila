@@ -9,11 +9,6 @@ check_error() {
     fi
 }
 
-# Устанавливаем зависимости
-echo "Installing dependencies..."
-pip install -r requirements.txt
-check_error "Failed to install dependencies"
-
 # Ждем, пока база данных будет готова
 echo "Waiting for database to be ready..."
 for i in {1..30}; do
