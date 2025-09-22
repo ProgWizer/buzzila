@@ -11,13 +11,9 @@ chat_bp = Blueprint('chat', __name__)
 
 # Определение списков для фильтрации ответов ИИ
 FORBIDDEN_KEYWORDS = [
-    'привет', 'инструкция', 'чат-бот', 'бот', 'искусственный интеллект',
-    'markdown', 'список', 'заголовок', 'я ассистент', 'я бот', 'я искусственный интеллект', 'я тренажёр',
-    'нейросеть', 'я —', 'я могу', 'я не человек', 'эмоции', 'сознание', 'создан', 'помогать', 'алгоритмы', 'данные',
-    'поддержкой', 'ответы на вопросы', 'я умею', 'я стараюсь', 'я постараюсь', 'я создан', 'я являюсь', 'я могу помочь',
-    'я не обладаю', 'я не имею', 'я не способен', 'я не могу', 'я не обладаю эмоциями', 'я не обладаю сознанием',
-    'я не обладаю личным мнением', 'я не живой', 'я не существую', 'я не личность', 'я не реальный',
-    'я не существую физически', 'я не обладаю физическим телом', 'я не обладаю физической формой'
+    # Существенно сокращено: оставляем только признаки самораскрытия ИИ и форматирование
+    'чат-бот', 'бот', 'искусственный интеллект',
+    'markdown', 'я ассистент', 'я бот', 'я искусственный интеллект', 'нейросеть'
 ]
 
 # Фразы, которые указывают на выход из роли (переход к роли помощника)
@@ -31,24 +27,39 @@ ROLE_BREAK_PHRASES = [
     "давайте обсудим спокойно",
     "я здесь, чтобы помочь",
     "я всегда готов к диалогу",
-    "извиняюсь", "извините", "помогу", "помочь", "решим", "решение проблемы", "скидка", "заменим", "компенсация",
-    "профессионально", "комфортно", "удобно", "помощь", "поможем", "сделаем всё возможное", "предлагаю", "предложить",
-    "ваш костюм будет немедленно приведён в порядок", "мы всё исправим", "мы предложим вам компенсацию", "как вам будет удобнее",
-    "я как официант", "мы вам заменим", "мы вам поменяем", "мы вам почистим", "мы вам компенсируем", "мы вам организуем",
-    "я сейчас всё поменяю", "я сейчас всё решу", "я сейчас всё исправлю", "я сейчас всё организую", "я сейчас всё улажу", 
-    "я сейчас всё компенсирую", "я сейчас всё заменю", "я сейчас всё починю", "я сейчас всё сделаю",
-    "давайте решим вопрос", "давайте решим ситуацию", "давайте решим проблему", "давайте уладим ситуацию", 
-    "давайте уладим вопрос", "давайте уладим проблему",
-    "организуем замену", "организуем чистку", "организуем возврат", "организуем компенсацию", "организуем решение", 
-    "организуем помощь",
+    "извиняюсь", "извините", "помогу", "помочь", "решим", "решение проблемы",
+    # Ниже сохранены сервисные фразы персонала; их наличие значит выход из роли клиента
+    "скидка", "заменим", "компенсация", "предлагаю", "предложить",
+    "мы всё исправим", "как вам будет удобнее",
+    "мы вам заменим", "мы вам поменяем", "мы вам почистим", "мы вам компенсируем", "мы вам организуем",
+    "я сейчас всё поменяю", "я сейчас всё решу", "я сейчас всё исправлю", "я сейчас всё организую", "я сейчас всё улажу",
+    "давайте решим вопрос", "давайте решим ситуацию", "давайте решим проблему", "давайте уладим ситуацию",
+    "организуем замену", "организуем чистку", "организуем возврат", "организуем компенсацию", "организуем решение",
     "приношу извинения", "приносим извинения", "приношу свои извинения", "приносим свои извинения",
-    "всё за наш счёт", "всё за мой счёт", "мы всё оплатим", "мы всё компенсируем", "мы всё уладим", "мы всё решим", 
-    "мы всё исправим",
-    "могу вызвать курьера", "могу организовать курьера", "могу организовать замену", "могу организовать чистку", 
+    "всё за наш счёт", "всё за мой счёт", "мы всё оплатим", "мы всё компенсируем", "мы всё уладим", "мы всё решим",
+    "могу вызвать курьера", "могу организовать курьера", "могу организовать замену", "могу организовать чистку",
     "могу организовать возврат", "могу организовать компенсацию",
-    "как вам будет удобнее", "как вам будет комфортнее", "как вам лучше", "как вам проще", "как вам удобнее уладить ситуацию",
-    "ещё раз приношу извинения", "приношу искренние извинения", "приношу свои извинения за доставленные неудобства",
 ]
+
+@chat_bp.route('/deepseek/health', methods=['GET'])
+@jwt_required()
+def deepseek_health():
+    """
+    Проверка доступности DeepSeek: делает минимальный вызов и возвращает статус/ошибку.
+    """
+    try:
+        params = {
+            'model': current_app.config.get('DEEPSEEK_MODEL', 'deepseek-chat'),
+            'messages': [{'role': 'user', 'content': 'ping'}],
+            'max_tokens': 1,
+            'temperature': 0.0
+        }
+        result = make_deepseek_request(params, retries=0)
+        if result and result.get('choices'):
+            return jsonify({'ok': True, 'detail': 'DeepSeek отвечает', 'model': params['model']}), 200
+        return jsonify({'ok': False, 'detail': 'Ответ пустой или без choices'}), 502
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 @chat_bp.route('/categories', methods=['GET'])
 @jwt_required()
@@ -137,20 +148,86 @@ def start_or_get_session():
         if not scenario:
             return jsonify({'error': 'Сценарий не найден'}), 404
 
-        # Завершаем все активные диалоги пользователя по данному сценарию
-        active_dialogs = Dialog.query.filter_by(
+        # Ищем активный диалог пользователя по данному сценарию
+        existing_dialog = Dialog.query.filter_by(
             user_id=current_user.id,
             scenario_id=scenario_id,
             status='active'
-        ).all()
-        
-        for active_dialog in active_dialogs:
-            active_dialog.status = 'completed'
-            active_dialog.completed_at = datetime.utcnow()
-            active_dialog.duration = int((active_dialog.completed_at - active_dialog.started_at).total_seconds())
-            active_dialog.analysis = "Диалог завершен автоматически при создании новой сессии"
+        ).order_by(Dialog.started_at.desc()).first()
 
-        # Создаем новый диалог
+        if existing_dialog:
+            # Если у диалога ещё нет сообщений — попробуем сгенерировать первую реплику
+            first_ai_message = None
+            has_messages = Message.query.filter_by(dialog_id=existing_dialog.id).first() is not None
+            if not has_messages:
+                try:
+                    first_prompt = generate_system_prompt_for_start(scenario)
+                    api_params = {
+                        'model': 'deepseek-chat',
+                        'messages': [
+                            {'role': 'system', 'content': first_prompt},
+                            {'role': 'user', 'content': 'Начни диалог как описано в инструкции. Сразу войди в роль и начни конфликт.'}
+                        ],
+                        'temperature': 0.8,
+                        'max_tokens': 300,
+                        'top_p': 0.9,
+                        'frequency_penalty': 0.1,
+                        'presence_penalty': 0.1
+                    }
+                    # Ретраи генерации первой реплики с корректировкой при выходе из роли
+                    ai_text = None
+                    for attempt in range(3):
+                        try:
+                            response = make_deepseek_request(api_params, retries=1)
+                            # Обработка недостаточного баланса — прекращаем попытки
+                            if response and isinstance(response, dict) and response.get('error', {}).get('code') == 'insufficient_balance':
+                                ai_text = get_fallback_response(scenario, reason='insufficient_balance')
+                                break
+                            if response and response.get('choices'):
+                                candidate = response['choices'][0]['message']['content'].strip()
+                                filtered = filter_ai_response(candidate, scenario)
+                                if filtered and filtered != '__ROLE_BREAK__':
+                                    ai_text = filtered
+                                    break
+                                else:
+                                    # Усиливаем инструкцию и немного повышаем temperature
+                                    api_params['messages'][0]['content'] += "\n\nВНИМАНИЕ: Оставайся только в роли клиента, не извиняйся, не предлагай помощь, не упоминай форматирование."
+                                    api_params['temperature'] = min(0.95, api_params.get('temperature', 0.8) + 0.05)
+                            time.sleep(0.4)
+                        except Exception as e:
+                            current_app.logger.error(f"Ошибка при первой реплике (существующий диалог), попытка {attempt+1}: {str(e)}")
+                            time.sleep(0.6)
+                    if ai_text:
+                        ai_message = Message(
+                            dialog_id=existing_dialog.id,
+                            sender='assistant',
+                            text=ai_text,
+                            timestamp=datetime.utcnow()
+                        )
+                        db.session.add(ai_message)
+                        db.session.commit()
+                        first_ai_message = {
+                            'id': ai_message.id,
+                            'sender': ai_message.sender,
+                            'text': ai_message.text,
+                            'timestamp': ai_message.timestamp.isoformat()
+                        }
+                except Exception as e:
+                    current_app.logger.error(f"Ошибка при первой реплике для существующего диалога: {str(e)}")
+
+            # Возвращаем существующую активную сессию
+            return jsonify({
+                'dialog_id': existing_dialog.id,
+                'scenario': {
+                    'id': scenario.id,
+                    'name': scenario.name,
+                    'description': scenario.description
+                },
+                'first_ai_message': first_ai_message,
+                'is_new_session': False
+            }), 200
+
+        # Активной сессии нет — создаём новую
         dialog = Dialog(
             user_id=current_user.id,
             scenario_id=scenario_id,
@@ -160,7 +237,7 @@ def start_or_get_session():
         db.session.add(dialog)
         db.session.commit()
 
-        # Получаем первую реплику от нейросети
+        # Получаем первую реплику от нейросети только для новой сессии
         first_prompt = generate_system_prompt_for_start(scenario)
         first_ai_message = None
         
@@ -178,32 +255,45 @@ def start_or_get_session():
         }
         
         try:
-            response = make_deepseek_request(api_params, retries=2)
+            # Ретраи генерации первой реплики
+            ai_text = None
+            for attempt in range(3):
+                try:
+                    response = make_deepseek_request(api_params, retries=1)
+                    # Обработка недостаточного баланса — прекращаем попытки
+                    if response and isinstance(response, dict) and response.get('error', {}).get('code') == 'insufficient_balance':
+                        ai_text = get_fallback_response(scenario, reason='insufficient_balance')
+                        break
+                    if response and response.get('choices'):
+                        candidate = response['choices'][0]['message']['content'].strip()
+                        filtered = filter_ai_response(candidate, scenario)
+                        if filtered and filtered != '__ROLE_BREAK__':
+                            ai_text = filtered
+                            break
+                        else:
+                            api_params['messages'][0]['content'] += "\n\nСтрого: не выходи из роли клиента, не извиняйся, не предлагай помощь, не упоминай Markdown."
+                            api_params['temperature'] = min(0.95, api_params.get('temperature', 0.8) + 0.05)
+                    time.sleep(0.4)
+                except Exception as e:
+                    current_app.logger.error(f"Ошибка при получении первой реплики, попытка {attempt+1}: {str(e)}")
+                    time.sleep(0.6)
             
-            if response and response.get('choices'):
-                ai_content = response['choices'][0]['message']['content'].strip()
+            if ai_text:
+                ai_message = Message(
+                    dialog_id=dialog.id,
+                    sender='assistant',
+                    text=ai_text,
+                    timestamp=datetime.utcnow()
+                )
+                db.session.add(ai_message)
+                db.session.commit()
                 
-                # Фильтруем ответ перед сохранением
-                ai_content = filter_ai_response(ai_content, scenario)
-                
-                # Если ответ прошел фильтрацию
-                if ai_content and ai_content != '__ROLE_BREAK__':
-                    # Сохраняем первое сообщение ИИ
-                    ai_message = Message(
-                        dialog_id=dialog.id,
-                        sender='assistant',
-                        text=ai_content,
-                        timestamp=datetime.utcnow()
-                    )
-                    db.session.add(ai_message)
-                    db.session.commit()
-                    
-                    first_ai_message = {
-                        'id': ai_message.id,
-                        'sender': ai_message.sender,
-                        'text': ai_message.text,
-                        'timestamp': ai_message.timestamp.isoformat()
-                    }
+                first_ai_message = {
+                    'id': ai_message.id,
+                    'sender': ai_message.sender,
+                    'text': ai_message.text,
+                    'timestamp': ai_message.timestamp.isoformat()
+                }
                     
         except Exception as e:
             current_app.logger.error(f"Ошибка при получении первой реплики: {str(e)}")
@@ -217,7 +307,7 @@ def start_or_get_session():
             },
             'first_ai_message': first_ai_message,
             'is_new_session': True
-        })
+        }), 200
         
     except Exception as e:
         current_app.logger.error(f"Ошибка в start_or_get_session: {str(e)}")
@@ -337,6 +427,10 @@ def send_session_message(dialog_id):
         while retry_count < max_retries:
             try:
                 response = make_deepseek_request(api_params, retries=1)
+                # Если провайдер вернул недостаточный баланс — не мучаем ретраи
+                if response and isinstance(response, dict) and response.get('error', {}).get('code') == 'insufficient_balance':
+                    ai_content = get_fallback_response(dialog.scenario, reason='insufficient_balance')
+                    break
                 
                 if response and response.get('choices'):
                     raw_ai_content = response['choices'][0]['message']['content'].strip()
@@ -360,7 +454,7 @@ def send_session_message(dialog_id):
         
         # Если не удалось получить валидный ответ
         if not ai_content or ai_content == '__ROLE_BREAK__':
-            ai_content = get_fallback_response(dialog.scenario)
+            ai_content = get_fallback_response(dialog.scenario, reason='deepseek_unavailable')
             current_app.logger.error("Использован резервный ответ")
                 
         # Сохраняем ответ ИИ в базу данных
@@ -392,6 +486,104 @@ def send_session_message(dialog_id):
         current_app.logger.error(f"Необработанная ошибка в send_session_message: {str(e)}")
         db.session.rollback()
         return jsonify({'error': 'Ошибка при отправке сообщения', 'details': str(e)}), 500
+
+@chat_bp.route('/sessions', methods=['GET'])
+@jwt_required()
+def list_user_sessions():
+    """
+    Получить список диалогов текущего пользователя.
+    Поддерживает параметры:
+    - status: 'active' | 'completed' (необязательно)
+    - limit: int (необязательно, по умолчанию 50)
+    - include_archived: true|false (необязательно, по умолчанию false)
+    """
+    try:
+        user_id = get_jwt_identity()
+        current_user = Users.query.get(user_id)
+        if not current_user:
+            return jsonify({'error': 'Пользователь не найден'}), 404
+
+        status = request.args.get('status')
+        include_archived = request.args.get('include_archived', 'false').lower() == 'true'
+        archived_only = request.args.get('archived_only', 'false').lower() == 'true'
+        try:
+            limit = int(request.args.get('limit', 50))
+        except ValueError:
+            limit = 50
+        limit = max(1, min(limit, 200))
+
+        query = Dialog.query.filter_by(user_id=current_user.id)
+        if status in ['active', 'completed']:
+            query = query.filter(Dialog.status == status)
+        if archived_only:
+            query = query.filter(Dialog.is_archived == True)
+        elif not include_archived:
+            query = query.filter((Dialog.is_archived == False) | (Dialog.is_archived.is_(None)))
+
+        dialogs = query.order_by(Dialog.id.desc()).limit(limit).all()
+
+        # Собираем краткую информацию
+        result = []
+        for d in dialogs:
+            # Получаем последнее сообщение для превью
+            last_msg = (
+                Message.query.filter_by(dialog_id=d.id)
+                .order_by(Message.timestamp.desc())
+                .first()
+            )
+            result.append({
+                'id': d.id,
+                'scenario_id': d.scenario_id,
+                'scenario_name': getattr(d.scenario, 'name', None),
+                'status': getattr(d, 'status', None),
+                'started_at': d.started_at.isoformat() if getattr(d, 'started_at', None) else None,
+                'completed_at': getattr(d, 'completed_at', None).isoformat() if getattr(d, 'completed_at', None) else None,
+                'duration': getattr(d, 'duration', None),
+                'is_archived': bool(getattr(d, 'is_archived', False)),
+                'last_message': {
+                    'sender': getattr(last_msg, 'sender', None),
+                    'text': getattr(last_msg, 'text', None),
+                    'timestamp': last_msg.timestamp.isoformat() if last_msg and getattr(last_msg, 'timestamp', None) else None,
+                } if last_msg else None
+            })
+
+        return jsonify({'sessions': result}), 200
+
+    except Exception as e:
+        current_app.logger.error(f"Ошибка при получении списка диалогов: {e}")
+        return jsonify({'error': 'Ошибка при получении списка диалогов', 'details': str(e)}), 500
+
+@chat_bp.route('/session/<int:dialog_id>/archive', methods=['PATCH'])
+@jwt_required()
+def archive_session(dialog_id):
+    try:
+        user_id = get_jwt_identity()
+        current_user = Users.query.get(user_id)
+        dialog = Dialog.query.filter_by(id=dialog_id, user_id=current_user.id).first()
+        if not dialog:
+            return jsonify({'error': 'Диалог не найден'}), 404
+        dialog.is_archived = True
+        db.session.commit()
+        return jsonify({'message': 'Диалог архивирован', 'dialog_id': dialog.id}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Не удалось архивировать диалог', 'details': str(e)}), 500
+
+@chat_bp.route('/session/<int:dialog_id>/restore', methods=['PATCH'])
+@jwt_required()
+def restore_session(dialog_id):
+    try:
+        user_id = get_jwt_identity()
+        current_user = Users.query.get(user_id)
+        dialog = Dialog.query.filter_by(id=dialog_id, user_id=current_user.id).first()
+        if not dialog:
+            return jsonify({'error': 'Диалог не найден'}), 404
+        dialog.is_archived = False
+        db.session.commit()
+        return jsonify({'message': 'Диалог восстановлен', 'dialog_id': dialog.id}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Не удалось восстановить диалог', 'details': str(e)}), 500
 
 def complete_dialog_with_simulation_command(dialog, current_user, message_content, data):
     """
@@ -914,8 +1106,9 @@ def make_deepseek_request(params, retries=2):
     """
     for attempt in range(retries + 1):
         try:
+            url = current_app.config['DEEPSEEK_API_URL'].rstrip('/') + '/chat/completions'
             response = requests.post(
-                current_app.config['DEEPSEEK_API_URL'] + '/chat/completions',
+                url,
                 headers={
                     'Authorization': f'Bearer {current_app.config["DEEPSEEK_API_KEY"]}',
                     'Content-Type': 'application/json'
@@ -927,33 +1120,44 @@ def make_deepseek_request(params, retries=2):
             if response.status_code == 200:
                 result = response.json()
                 if result and result.get('choices') and len(result['choices']) > 0:
-                    content = result['choices'][0]['message']['content']
                     return result
                 else:
+                    current_app.logger.error("DeepSeek 200 без choices: %s", response.text[:500])
                     return None
                     
             elif response.status_code == 429:  # Rate limit
+                current_app.logger.warning("DeepSeek 429 (rate limit), attempt %s", attempt + 1)
                 time.sleep(2 ** attempt)  # Exponential backoff
                 continue
                 
-            elif response.status_code == 400:
-                return None  # Не повторяем bad requests
-                
-            elif response.status_code == 401:
-                return None  # Не повторяем auth errors
+            elif response.status_code == 402:
+                # Недостаточный баланс — не повторяем, возвращаем спец-код
+                try:
+                    body = response.json()
+                except Exception:
+                    body = {'error': {'message': response.text}}
+                current_app.logger.error("DeepSeek 402: %s", response.text[:500])
+                return {'error': {'code': 'insufficient_balance', 'detail': body.get('error', {}).get('message')}}
+
+            elif response.status_code in (400, 401, 403):
+                current_app.logger.error("DeepSeek %s: %s", response.status_code, response.text[:500])
+                return None  # Не повторяем auth/bad requests
                 
             else:
+                current_app.logger.error("DeepSeek %s: %s", response.status_code, response.text[:500])
                 if attempt < retries:
                     time.sleep(1)
                     continue
                 return None
                 
         except requests.exceptions.Timeout:
+            current_app.logger.error("DeepSeek timeout, attempt %s", attempt + 1)
             if attempt < retries:
                 time.sleep(2)
                 continue
                 
-        except requests.exceptions.ConnectionError:
+        except requests.exceptions.ConnectionError as ce:
+            current_app.logger.error("DeepSeek connection error, attempt %s: %s", attempt + 1, str(ce))
             if attempt < retries:
                 time.sleep(2)
                 continue
@@ -995,6 +1199,7 @@ def generate_system_prompt_for_start(scenario):
 НЕ используй markdown, НЕ объясняй ситуацию, НЕ говори "Начинаем диалог".
 СРАЗУ начинай с эмоциональной реплики конфликтного человека!"""
 
+
 def generate_system_prompt_for_continue(scenario):
     """
     Системный промпт для продолжения диалога
@@ -1024,6 +1229,7 @@ def generate_system_prompt_for_continue(scenario):
 
 НЕ используй markdown или форматирование. Отвечай естественно."""
 
+
 def filter_ai_response(text, scenario):
     """
     Фильтрация ответов ИИ для предотвращения выхода из роли
@@ -1033,33 +1239,20 @@ def filter_ai_response(text, scenario):
     
     lower_text = text.lower()
     
-    # Проверяем на явный выход из роли
-    role_break_indicators = [
-        'извиняюсь', 'извините', 'приношу извинения',
-        'помогу', 'поможем', 'помочь вам', 
-        'решим проблему', 'решение вопроса',
-        'компенсация', 'скидка', 'возврат денег',
-        'давайте обсудим', 'я готов помочь',
-        'мы всё исправим', 'за наш счёт',
-        'организуем замену', 'вызову администратора',
-        'профессиональная чистка'
-    ]
-    
-    # Если найдены фразы выхода из роли
-    for indicator in role_break_indicators:
+    # 1) Явные признаки выхода в режим помощника/персонала или самораскрытия ИИ
+    for indicator in ROLE_BREAK_PHRASES:
         if indicator in lower_text:
             return '__ROLE_BREAK__'
-    
-    # Проверяем запрещенные ключевые слова
+
     for word in FORBIDDEN_KEYWORDS:
         if word in lower_text:
             return '__ROLE_BREAK__'
     
-    # Проверяем, что ИИ говорит от лица правильной роли
-    ai_role_lower = scenario.ai_role.lower()
-    user_role_lower = scenario.user_role.lower()
+    # 2) Проверяем, что ИИ говорит от лица правильной роли (безопасно для None)
+    ai_role_lower = str(getattr(scenario, 'ai_role', '') or '').lower()
+    user_role_lower = str(getattr(scenario, 'user_role', '') or '').lower()
     
-    # Если ИИ говорит от лица пользователя - это нарушение
+    # Если ИИ говорит от лица пользователя - это нарушение (пример с официантом)
     if 'официант' in user_role_lower and any(phrase in lower_text for phrase in [
         'я официант', 'как официант', 'в качестве официанта'
     ]):
@@ -1067,11 +1260,23 @@ def filter_ai_response(text, scenario):
     
     return text
 
-def get_fallback_response(scenario):
+def get_fallback_response(scenario, reason=None):
     """
     Резервные ответы когда ИИ не может сгенерировать правильный ответ
     """
-    ai_role = scenario.ai_role.lower()
+    # Явное сообщение пользователю о технической проблеме сервиса генерации
+    if reason == 'deepseek_unavailable':
+        return (
+            "Техническая проблема: сервис генерации ответов временно недоступен. "
+            "Ваше сообщение сохранено, попробуйте повторить попытку позже."
+        )
+    if reason == 'insufficient_balance':
+        return (
+            "Сервис генерации ответов временно недоступен: недостаточный баланс провайдера ИИ. "
+            "Мы уже работаем над восстановлением. Попробуйте позже."
+        )
+
+    ai_role = str(getattr(scenario, 'ai_role', '') or '').lower()
     
     fallback_responses = {
         'недовольный': [
