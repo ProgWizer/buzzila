@@ -12,7 +12,7 @@ RUN apt-get update && \
         netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем requirements.txt
+# Копируем requirements.tx
 COPY requirements.txt .
 
 # Устанавливаем Python-зависимости
