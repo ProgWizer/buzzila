@@ -56,6 +56,13 @@ def add_scenario():
 НАЧНИ СИМУЛЯЦИЮ НЕМЕДЛЕННО ПОСЛЕ ПОЛУЧЕНИЯ ДАННОЙ СИСТЕМНОЙ ПОДСКАЗКИ
 """
 
+    # Если на вход передан готовый системный промпт (например, выбран шаблон) — используем его
+    if data.get('prompt_template'):
+        prompt_template = data['prompt_template']
+    
+    # Получаем ID шаблона промпта, если он передан
+    prompt_template_id = data.get('prompt_template_id')
+
     new_scenario = Scenario(
         name=name,
         description=description,
@@ -67,6 +74,7 @@ def add_scenario():
         ai_role=ai_role,
         ai_behavior=ai_behavior,
         prompt_template=prompt_template,
+        prompt_template_id=prompt_template_id,  # Добавляем связь с шаблоном
         # TODO: type, difficulty, organization_id, estimated_time - пока не заполняем, можно будет добавить позже
         type=ScenarioType.CAFE,  # По умолчанию
         difficulty=1, # Заглушка
@@ -76,6 +84,26 @@ def add_scenario():
     try:
         db.session.add(new_scenario)
         db.session.commit()
+
+        # Сохраняем привязку шаблона к сценарию в Redis (для обратной совместимости и кэша)
+        try:
+            from utils.redis_client import redis_client
+            if prompt_template_id:
+                import json as _json
+                raw = redis_client.get('scenario_prompt_template_map')
+                current_map = {}
+                if raw:
+                    try:
+                        current_map = _json.loads(raw.decode('utf-8'))
+                        if not isinstance(current_map, dict):
+                            current_map = {}
+                    except Exception:
+                        current_map = {}
+                current_map[str(new_scenario.id)] = int(prompt_template_id)
+                redis_client.set('scenario_prompt_template_map', _json.dumps(current_map, ensure_ascii=False))
+        except Exception:
+            pass
+
         return jsonify({'message': 'Сценарий успешно добавлен!', 'scenario_id': new_scenario.id}), 201
     except Exception as e:
         db.session.rollback()
@@ -105,6 +133,11 @@ def get_all_scenarios_admin():
             'organization': {
                 'id': scenario.organization.id if scenario.organization else None,
                 'name': scenario.organization.name if scenario.organization else None,
+            },
+            'prompt_template_id': scenario.prompt_template_id,
+            'prompt_template': {
+                'id': scenario.prompt_template_obj.id if scenario.prompt_template_obj else None,
+                'name': scenario.prompt_template_obj.name if scenario.prompt_template_obj else None,
             }
         })
     return jsonify(scenarios_list), 200
@@ -118,7 +151,7 @@ def get_scenarios_for_user_view():
     user_id = get_jwt_identity()
     current_user = Users.query.get(user_id)
     if not current_user:
-        return jsonify({'error': 'Пользователь не найден'}), 404
+        return jsonify({'error': 'Пользователь не найден'}), 401
     # Получаем все сценарии, которые НЕ являются шаблонами
     scenarios = Scenario.query.filter_by(is_template=False).all()
     
@@ -257,6 +290,10 @@ def update_scenario(scenario_id):
     # Можно обновить prompt_template, если нужно
     if 'prompt_template' in data:
         scenario.prompt_template = data['prompt_template']
+    
+    # Обновление привязки к шаблону промпта (может быть null)
+    if 'prompt_template_id' in data:
+        scenario.prompt_template_id = data['prompt_template_id']
 
     # Обновление привязки к организации (может быть null)
     if 'organization_id' in data:
@@ -264,6 +301,29 @@ def update_scenario(scenario_id):
 
     try:
         db.session.commit()
+
+        # Сохраняем/сбрасываем привязку в Redis
+        try:
+            from utils.redis_client import redis_client
+            import json as _json
+            raw = redis_client.get('scenario_prompt_template_map')
+            current_map = {}
+            if raw:
+                try:
+                    current_map = _json.loads(raw.decode('utf-8'))
+                    if not isinstance(current_map, dict):
+                        current_map = {}
+                except Exception:
+                    current_map = {}
+            if getattr(scenario, 'prompt_template_id', None):
+                current_map[str(scenario.id)] = int(scenario.prompt_template_id)
+            else:
+                if str(scenario.id) in current_map:
+                    del current_map[str(scenario.id)]
+            redis_client.set('scenario_prompt_template_map', _json.dumps(current_map, ensure_ascii=False))
+        except Exception:
+            pass
+
         return jsonify({'message': 'Сценарий успешно обновлён!'}), 200
     except Exception as e:
         db.session.rollback()

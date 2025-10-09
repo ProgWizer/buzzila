@@ -9,7 +9,7 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Line, Pie, Bar } from 'react-chartjs-2';
 import {
   Chart,
@@ -55,6 +55,22 @@ function getChartColors() {
 
 const Admin = () => {
   // 1. useState (все состояния)
+  const navigate = useNavigate();
+  // Универсальный fetch с токеном и обработкой 401
+  const authFetch = async (url, options = {}) => {
+    const token = localStorage.getItem('access_token');
+    const headers = {
+      ...(options.headers || {}),
+      'Authorization': `Bearer ${token}`,
+    };
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+      toast.error('Сессия истекла. Войдите заново.');
+      navigate('/login');
+      throw new Error('Unauthorized');
+    }
+    return res;
+  };
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -111,6 +127,10 @@ const Admin = () => {
   const [usersWithAchievement, setUsersWithAchievement] = useState([]);
   const [availableUsersForAssignment, setAvailableUsersForAssignment] = useState([]);
 
+  // Состояния для работы с иконками
+  const [availableIcons, setAvailableIcons] = useState([]);
+  const [loadingIcons, setLoadingIcons] = useState(false);
+
   //  Состояния для управления сценариями
   const [scenarios, setScenarios] = useState([]);
   const [loadingScenarios, setLoadingScenarios] = useState(true);
@@ -127,6 +147,7 @@ const Admin = () => {
     ai_role: '',
     ai_behavior: '',
     is_template: false,
+    prompt_template_id: null,
   });
 
   const [showEditScenarioModal, setShowEditScenarioModal] = useState(false);
@@ -142,6 +163,7 @@ const Admin = () => {
     ai_role: '',
     ai_behavior: '',
     is_template: false,
+    prompt_template_id: null,
   });
 
   // Состояние модалки шаблонов системных промптов
@@ -150,15 +172,52 @@ const Admin = () => {
   const [promptTemplateForm, setPromptTemplateForm] = useState({
     name: '',
     description: '',
-    content_start: '',
-    content_continue: '',
-    forbidden_words: '',
-    sections_json: '',
+    prompt: '', // Упрощенная форма - только основной промпт
   });
+  const [activePromptTemplateId, setActivePromptTemplateId] = useState(null);
+  // Состояния синхронизации привязки шаблонов к сценариям
+  const [isSyncingTemplates, setIsSyncingTemplates] = useState(false);
+  const [syncError, setSyncError] = useState(null);
 
-  // 1. Добавляем состояния для списка иконок и загрузки
-  const [availableIcons, setAvailableIcons] = useState([]);
-  const [loadingIcons, setLoadingIcons] = useState(false);
+  // Привязка шаблонов к сценариям: карта scenarioId -> templateId и контекст открытой модалки
+  const [scenarioTemplateMap, setScenarioTemplateMap] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('scenarioTemplateMap') || '{}'); } catch { return {}; }
+  });
+  const [templateScenarioContext, setTemplateScenarioContext] = useState(null);
+  
+  // Состояние для редактирования содержимого шаблона
+  const [showEditTemplateModal, setShowEditTemplateModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState({
+    id: null,
+    name: '',
+    description: '',
+    prompt: '',
+  });
+  const [editingTemplateReadOnly, setEditingTemplateReadOnly] = useState(false);
+
+  // Состояния предпросмотра системного промпта
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [previewTemplate, setPreviewTemplate] = useState(null);
+  const [previewInput, setPreviewInput] = useState('');
+  const [previewResult, setPreviewResult] = useState('');
+  const [previewAnalysisResult, setPreviewAnalysisResult] = useState('');
+
+  // Валидация шаблона (минимальная)
+  const validateTemplate = (tpl) => {
+    const errors = [];
+    if (!((tpl.content_start && tpl.content_start.trim()) || (tpl.content_continue && tpl.content_continue.trim()))) {
+      errors.push('Укажите content_start или content_continue');
+    }
+    if (tpl.sections_json) {
+      try {
+        const j = typeof tpl.sections_json === 'string' ? JSON.parse(tpl.sections_json) : tpl.sections_json;
+        if (j && typeof j !== 'object') errors.push('sections_json должен быть объектом');
+      } catch (e) {
+        errors.push('sections_json должен быть валидным JSON');
+      }
+    }
+    return errors;
+  };
 
   const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
 
@@ -313,12 +372,7 @@ const Admin = () => {
   const fetchAvailableIcons = async () => {
     setLoadingIcons(true);
     try {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/upload/achievement_icons', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await authFetch('/api/upload/achievement_icons');
       if (response.ok) {
         const data = await response.json();
         setAvailableIcons(data.icons || []);
@@ -341,17 +395,7 @@ const Admin = () => {
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Пожалуйста, войдите как администратор.');
-      }
-
-      const response = await fetch('/api/admin/users', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await authFetch('/api/admin/users', { headers: { 'Content-Type': 'application/json' } });
 
       if (!response.ok) {
         if (response.status === 403) {
@@ -375,18 +419,8 @@ const Admin = () => {
 
   const fetchAchievements = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Токен авторизации не найден.');
-      }
-
       setLoadingAchievements(true);
-      const response = await fetch('/api/achievements', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await authFetch('/api/achievements', { headers: { 'Content-Type': 'application/json' } });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -406,18 +440,8 @@ const Admin = () => {
   // НОВАЯ ФУНКЦИЯ: Загрузка сценариев
   const fetchScenarios = async () => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('Токен авторизации не найден.');
-      }
-
       setLoadingScenarios(true);
-      const response = await fetch('/api/scenarios', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const response = await authFetch('/api/scenarios', { headers: { 'Content-Type': 'application/json' } });
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -794,21 +818,13 @@ const Admin = () => {
     setLoadingAchievements(true); // Индикатор загрузки для этой операции модального окна
 
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) throw new Error('Токен авторизации не найден.');
-
       const usersHaving = [];
       const usersNotHaving = [];
 
       // Загружаем достижения для каждого пользователя, чтобы определить, у кого есть это конкретное достижение
       // Это проблема N+1 запросов, но будет работать при текущей структуре бэкенда
       for (const user of users) { // 'users' уже загружены из fetchUsers
-        const response = await fetch(`/api/users/${user.id}/achievements`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        const response = await authFetch(`/api/users/${user.id}/achievements`, { headers: { 'Content-Type': 'application/json' } });
 
         if (!response.ok) {
           console.warn(`Не удалось загрузить достижения для пользователя ${user.username}:`, await response.text());
@@ -841,15 +857,9 @@ const Admin = () => {
   // Обработчик назначения достижения пользователю
   const handleAssignAchievementToUser = async (userId, achievementId) => {
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) throw new Error('Токен авторизации не найден.');
-
-      const response = await fetch('/api/achievements/assign_to_user', {
+      const response = await authFetch('/api/achievements/assign_to_user', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: userId,
           achievement_id: achievementId,
@@ -879,15 +889,9 @@ const Admin = () => {
       return;
     }
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token) throw new Error('Токен авторизации не найден.');
-
-      const response = await fetch(`/api/achievements/${achievementId}/unassign/${userId}`, {
+      const response = await authFetch(`/api/achievements/${achievementId}/unassign/${userId}`, {
         method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (!response.ok) {
@@ -944,6 +948,7 @@ const Admin = () => {
         ai_role: '',
         ai_behavior: '',
         is_template: false,
+        prompt_template_id: null,
       });
       fetchScenarios(); // Обновляем список сценариев
     } catch (err) {
@@ -956,7 +961,7 @@ const Admin = () => {
   };
 
   // НОВЫЙ ОБРАБОТЧИК: Редактирование сценария
-  const handleEditScenarioClick = (scenario) => {
+  const handleEditScenarioClick = async (scenario) => {
     setCurrentScenario({
       id: scenario.id,
       name: scenario.name, // Изменено с title на name
@@ -969,7 +974,10 @@ const Admin = () => {
       ai_role: scenario.ai_role,
       ai_behavior: scenario.ai_behavior,
       is_template: scenario.is_template,
+      prompt_template_id: scenario.prompt_template_id,
     });
+    // Загружаем промпт-шаблоны для выбора
+    await fetchPromptTemplates();
     setShowEditScenarioModal(true);
   };
 
@@ -1050,13 +1058,17 @@ const Admin = () => {
   const [iconUrlInput, setIconUrlInput] = useState(''); // URL для загрузки иконки
   const [previewIcon, setPreviewIcon] = useState(null); // Новое состояние для предпросмотра иконки
 
+  // Подгружаем шаблоны при открытии модалки
+  useEffect(() => {
+    if (showPromptTemplatesModal) {
+      fetchPromptTemplates();
+    }
+  }, [showPromptTemplatesModal]);
+
   useEffect(() => {
     const fetchStats = async () => {
-      const token = localStorage.getItem('access_token');
       try {
-        const response = await fetch('/api/admin/stats', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const response = await authFetch('/api/admin/stats');
         if (response.ok) {
           const data = await response.json();
           setStats(data);
@@ -1074,10 +1086,9 @@ const Admin = () => {
   // --- Функция для загрузки статистики по датам ---
   const fetchDailyStats = async () => {
     setLoadingCharts(true);
-    const token = localStorage.getItem('access_token');
     let url = '/api/admin/stats/daily';
     if (dateFrom && dateTo) url += `?from=${dateFrom}&to=${dateTo}`;
-    const response = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+    const response = await authFetch(url);
     if (response.ok) {
       const data = await response.json();
       setDailyStats(data);
@@ -1092,31 +1103,19 @@ const Admin = () => {
 
   useEffect(() => {
     const fetchRolesStats = async () => {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/admin/stats/roles', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await authFetch('/api/admin/stats/roles');
       if (response.ok) setRolesStats(await response.json());
     };
     const fetchTopScenarios = async () => {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/admin/stats/top-scenarios', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await authFetch('/api/admin/stats/top-scenarios');
       if (response.ok) setTopScenarios(await response.json());
     };
     const fetchAchievementsDist = async () => {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/admin/stats/achievements-distribution', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await authFetch('/api/admin/stats/achievements-distribution');
       if (response.ok) setAchievementsDist(await response.json());
     };
     const fetchTopUsers = async () => {
-      const token = localStorage.getItem('access_token');
-      const response = await fetch('/api/admin/stats/top-users', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await authFetch('/api/admin/stats/top-users');
       if (response.ok) setTopUsers(await response.json());
     };
     fetchRolesStats();
@@ -1373,14 +1372,17 @@ const Admin = () => {
       setOrganizationUsers(data);
       setCurrentOrganization({ ...currentOrganization, id: organizationId });
       setShowOrganizationUsersModal(true);
+      
+      // Загружаем доступных пользователей, исключая уже добавленных
+      fetchAvailableUsers(organizationId);
     } catch (err) {
       console.error('Ошибка при загрузке пользователей организации:', err);
       toast.error(`Ошибка: ${err.message}`);
     }
   };
 
-  // Загрузка доступных пользователей (без организации)
-  const fetchAvailableUsers = async () => {
+  // Загрузка доступных пользователей (исключая уже добавленных в организацию)
+  const fetchAvailableUsers = async (organizationId = null) => {
     try {
       const token = localStorage.getItem('access_token');
       if (!token) {
@@ -1399,8 +1401,29 @@ const Admin = () => {
       }
 
       const data = await response.json();
+      
+      if (organizationId) {
+        // Получаем пользователей организации
+        const orgUsersResponse = await fetch(`/api/admin/organizations/${organizationId}/users`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        if (orgUsersResponse.ok) {
+          const orgUsers = await orgUsersResponse.json();
+          const orgUserIds = orgUsers.map(user => user.id);
+          // Исключаем пользователей, которые уже в организации
+          setAvailableUsers(data.filter(user => !orgUserIds.includes(user.id)));
+        } else {
+          // Если не удалось загрузить пользователей организации, показываем всех
+          setAvailableUsers(data);
+        }
+      } else {
       // Фильтруем пользователей без организации
       setAvailableUsers(data.filter(user => !user.organization_id));
+      }
     } catch (err) {
       console.error('Ошибка при загрузке доступных пользователей:', err);
     }
@@ -1430,7 +1453,7 @@ const Admin = () => {
 
       toast.success('Пользователь успешно добавлен в организацию!');
       setShowAddUserToOrgModal(false);
-      fetchAvailableUsers(); // Обновляем список доступных пользователей
+      fetchAvailableUsers(organizationId); // Обновляем список доступных пользователей
       fetchOrganizations(); // Обновляем список организаций
       handleViewOrganizationUsers(organizationId); // Обновляем список пользователей организации
     } catch (err) {
@@ -1462,7 +1485,7 @@ const Admin = () => {
 
       toast.success('Пользователь успешно удален из организации!');
       handleViewOrganizationUsers(organizationId); // Обновляем список пользователей организации
-      fetchAvailableUsers(); // Обновляем список доступных пользователей
+      fetchAvailableUsers(organizationId); // Обновляем список доступных пользователей
       fetchOrganizations(); // Обновляем список организаций
     } catch (err) {
       console.error('Ошибка при удалении пользователя из организации:', err);
@@ -1573,6 +1596,328 @@ const Admin = () => {
       toast.error('Ошибка при удалении сценария');
     }
   };
+
+  // Функции для работы с промпт-шаблонами
+  const fetchPromptTemplates = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch('/api/prompt-templates', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Не удалось загрузить шаблоны');
+      const data = await res.json();
+      // Встроенный неизменяемый шаблон (храним текст в localStorage, чтобы не жить в коде)
+      const builtinPrompt = localStorage.getItem('builtin_system_prompt') || 'Вы — базовая системная роль. Отвечайте вежливо, кратко и по делу.';
+      const builtin = {
+        id: '__builtin__',
+        name: 'Системный (дефолтный)',
+        description: 'Встроенный системный промпт по умолчанию',
+        is_builtin: true,
+        // для совместимости с отображением содержимого
+        content_start: `Вы - Системный (дефолтный). ${builtinPrompt}`,
+        content_continue: 'Продолжайте диалог, следуя установленному стилю и роли.',
+        forbidden_words: 'негатив, оскорбления, неподходящий контент',
+        sections_json: JSON.stringify({
+          role: 'Вы - Системный (дефолтный)',
+          behavior: builtinPrompt,
+          guidelines: [
+            'Следуйте установленной роли',
+            'Будьте полезным и вежливым',
+            'Избегайте запрещенных тем'
+          ]
+        })
+      };
+      setPromptTemplates([builtin, ...(Array.isArray(data) ? data : [])]);
+    } catch (e) {
+      setPromptTemplates([]);
+      toast.error('Ошибка загрузки шаблонов');
+    }
+  };
+
+  // --- СИНХРОНИЗАЦИЯ ПРИВЯЗКИ ШАБЛОНОВ К СЦЕНАРИЯМ ---
+  const fetchScenarioTemplateMapServer = async () => {
+    try {
+      setIsSyncingTemplates(true);
+      setSyncError(null);
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Нет токена авторизации');
+      // Пытаемся получить карту с сервера (единый эндпоинт)
+      const res = await fetch('/api/chat/prompt-templates/scenario-map', { headers: { 'Authorization': `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        const map = (data && data.map) || {};
+        setScenarioTemplateMap(map);
+        localStorage.setItem('scenarioTemplateMap', JSON.stringify(map));
+      }
+    } catch (e) {
+      setSyncError('Не удалось синхронизировать шаблоны, используется локальное хранилище');
+    } finally {
+      setIsSyncingTemplates(false);
+    }
+  };
+
+  const saveScenarioTemplateBinding = async (scenarioId, templateId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Нет токена авторизации');
+      // Основной эндпоинт
+      const res = await fetch(`/api/chat/scenarios/${scenarioId}/prompt-template`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ template_id: templateId })
+      });
+      if (!res.ok) throw new Error('PUT привязки неудачен');
+    } catch (e) {
+      // Фолбэк: ничего, локалстораж уже обновили
+    }
+  };
+
+  const clearScenarioTemplateBinding = async (scenarioId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) throw new Error('Нет токена авторизации');
+      const res = await fetch(`/api/chat/scenarios/${scenarioId}/prompt-template`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('DELETE привязки неудачен');
+    } catch (e) {
+      // Фолбэк: игнорируем, локально уже удалили
+    }
+  };
+
+  const fetchActivePromptTemplate = async () => {
+    // Активный шаблон теперь определяется контекстом сценария через локальную карту
+    setActivePromptTemplateId(
+      templateScenarioContext ? (scenarioTemplateMap[String(templateScenarioContext)] || null) : null
+    );
+  };
+
+  const handleCreatePromptTemplate = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      
+      // Автоматически генерируем структуру на основе простого промпта
+      const templateData = {
+        name: promptTemplateForm.name,
+        description: promptTemplateForm.description,
+        content_start: `Вы - ${promptTemplateForm.name}. ${promptTemplateForm.prompt}`,
+        content_continue: "Продолжите диалог, следуя установленному стилю и роли.",
+        forbidden_words: "негатив, оскорбления, неподходящий контент",
+        sections_json: JSON.stringify({
+          "role": "Вы - " + promptTemplateForm.name,
+          "behavior": promptTemplateForm.prompt,
+          "guidelines": [
+            "Следуйте установленной роли",
+            "Будьте полезным и вежливым",
+            "Избегайте запрещенных тем"
+          ]
+        })
+      };
+      
+      const res = await fetch('/api/prompt-templates', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(templateData)
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || 'Не удалось создать шаблон');
+      }
+      toast.success('Шаблон создан');
+      setPromptTemplateForm({ name: '', description: '', prompt: '' });
+      fetchPromptTemplates();
+    } catch (e) {
+      toast.error(`Ошибка: ${e.message}`);
+    }
+  };
+
+  const handleActivatePromptTemplate = async (id) => {
+    try {
+      // Привязываем шаблон к сценарию в локальной карте
+      if (!templateScenarioContext) {
+        throw new Error('Сначала выберите сценарий (откройте управление из окна сценария)');
+      }
+      const scenarioIdKey = String(templateScenarioContext);
+      const nextMap = { ...scenarioTemplateMap, [scenarioIdKey]: id };
+      setScenarioTemplateMap(nextMap);
+      localStorage.setItem('scenarioTemplateMap', JSON.stringify(nextMap));
+      setActivePromptTemplateId(id);
+      toast.success('Активный шаблон установлен для сценария');
+      // Серверная синхронизация (не блокирующая)
+      saveScenarioTemplateBinding(templateScenarioContext, id);
+
+      // Обновляем привязку на стороне сценария (источник истины в БД)
+      try {
+        const token = localStorage.getItem('access_token');
+        await fetch(`/api/scenarios/${templateScenarioContext}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt_template_id: id })
+        });
+        // Обновляем список сценариев, чтобы колонка "Промпт" обновилась сразу
+        fetchScenarios();
+      } catch {}
+    } catch (e) {
+      toast.error(`Ошибка: ${e.message}`);
+    }
+  };
+
+  const handleClearActivePromptTemplate = async () => {
+    try {
+      if (!templateScenarioContext) {
+        throw new Error('Сначала выберите сценарий (откройте управление из окна сценария)');
+      }
+      const scenarioIdKey = String(templateScenarioContext);
+      const nextMap = { ...scenarioTemplateMap };
+      delete nextMap[scenarioIdKey];
+      setScenarioTemplateMap(nextMap);
+      localStorage.setItem('scenarioTemplateMap', JSON.stringify(nextMap));
+      setActivePromptTemplateId(null);
+      toast.success('Активный шаблон сброшен для сценария');
+      clearScenarioTemplateBinding(templateScenarioContext);
+
+      // Сбрасываем привязку в самом сценарии (prompt_template_id = null)
+      try {
+        const token = localStorage.getItem('access_token');
+        await fetch(`/api/scenarios/${templateScenarioContext}`, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt_template_id: null })
+        });
+        // Обновляем список сценариев, чтобы колонка "Промпт" очистилась
+        fetchScenarios();
+      } catch {}
+    } catch (e) {
+      toast.error(`Ошибка: ${e.message}`);
+    }
+  };
+
+  const handleUpdatePromptTemplate = async (template) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const errs = validateTemplate(template);
+      if (errs.length) {
+        toast.error(`Исправьте ошибки: ${errs.join('; ')}`);
+        return;
+      }
+      const res = await fetch(`/api/prompt-templates/${template.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(template)
+      });
+      if (!res.ok) throw new Error('Не удалось обновить шаблон');
+      toast.success('Шаблон обновлён');
+      fetchPromptTemplates();
+    } catch (e) {
+      toast.error(`Ошибка: ${e.message}`);
+    }
+  };
+
+  const handleDeletePromptTemplate = async (id) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/prompt-templates/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('Не удалось удалить шаблон');
+      toast.success('Шаблон удалён');
+      fetchPromptTemplates();
+    } catch (e) {
+      toast.error(`Ошибка: ${e.message}`);
+    }
+  };
+
+  const handleEditTemplateContent = (template) => {
+    // Собираем читаемое содержимое из полей шаблона для просмотра
+    let composed = '';
+    try {
+      const parts = [];
+      if (template.content_start) parts.push(template.content_start);
+      // sections_json
+      if (template.sections_json) {
+        try {
+          const js = typeof template.sections_json === 'string' ? JSON.parse(template.sections_json) : template.sections_json;
+          if (js && js.role) parts.push(`Роль: ${js.role}`);
+          if (js && js.behavior) parts.push(`Поведение: ${js.behavior}`);
+          if (Array.isArray(js?.guidelines) && js.guidelines.length) {
+            parts.push(`Рекомендации:\n- ${js.guidelines.join('\n- ')}`);
+          }
+        } catch {}
+      }
+      if (template.forbidden_words) parts.push(`Избегай: ${template.forbidden_words}`);
+      if (template.content_continue) parts.push(template.content_continue);
+      composed = parts.filter(Boolean).join('\n\n');
+    } catch {
+      composed = '';
+    }
+    setEditingTemplate({
+      id: template.id,
+      name: template.name,
+      description: template.description,
+      prompt: composed,
+    });
+    setEditingTemplateReadOnly(!!template.is_builtin || template.id === '__builtin__');
+    setShowEditTemplateModal(true);
+  };
+
+  const handleSaveTemplateContent = async (e) => {
+    e.preventDefault();
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      // Генерируем структуру так же, как при создании
+      const payload = {
+        id: editingTemplate.id,
+        name: editingTemplate.name,
+        description: editingTemplate.description,
+        content_start: `Вы - ${editingTemplate.name}. ${editingTemplate.prompt}`,
+        content_continue: 'Продолжите диалог, следуя установленному стилю и роли.',
+        forbidden_words: 'негатив, оскорбления, неподходящий контент',
+        sections_json: JSON.stringify({
+          role: 'Вы - ' + editingTemplate.name,
+          behavior: editingTemplate.prompt,
+          guidelines: [
+            'Следуйте установленной роли',
+            'Будьте полезным и вежливым',
+            'Избегайте запрещенных тем'
+          ]
+        })
+      };
+      const res = await fetch(`/api/prompt-templates/${editingTemplate.id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('Не удалось обновить шаблон');
+      toast.success('Содержимое шаблона обновлено');
+      setShowEditTemplateModal(false);
+      fetchPromptTemplates();
+    } catch (e) {
+      toast.error(`Ошибка: ${e.message}`);
+    }
+  };
+
+  // Загрузка шаблонов при монтировании компонента и при смене контекста сценария
+  useEffect(() => {
+    fetchPromptTemplates();
+    fetchScenarioTemplateMapServer();
+  }, []);
+  useEffect(() => {
+    fetchActivePromptTemplate();
+  }, [templateScenarioContext, scenarioTemplateMap]);
 
   if (loading) {
     return (
@@ -1985,7 +2330,10 @@ const Admin = () => {
               Сортировать по названию
             </button>
             <button 
-              onClick={() => setShowAddScenarioModal(true)}
+              onClick={async () => {
+                await fetchPromptTemplates();
+                setShowAddScenarioModal(true);
+              }}
               className="bg-green-500 text-white rounded-[8px] px-3 py-1 hover:bg-green-700 transition min-w-[100px] text-xs sm:text-base"
             >
               Добавить новый сценарий
@@ -2001,7 +2349,7 @@ const Admin = () => {
                   <th className="px-2 py-2 font-semibold hidden xs:table-cell">Сфера</th>
                   <th className="px-2 py-2 font-semibold hidden sm:table-cell">Ситуация</th>
                   <th className="px-2 py-2 font-semibold hidden md:table-cell">Организация</th>
-                  <th className="px-2 py-2 font-semibold hidden md:table-cell">Шаблон</th>
+                  <th className="px-2 py-2 font-semibold hidden md:table-cell">Промпт</th>
                   <th className="px-2 py-2 font-semibold">Действия</th>
                 </tr>
               </thead>
@@ -2028,7 +2376,9 @@ const Admin = () => {
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden xs:table-cell">{scenario.sphere}</td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{scenario.situation}</td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden md:table-cell">{scenario.organization_id ? (orgIdToName[scenario.organization_id] || '-') : '—'}</td>
-                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden md:table-cell">{scenario.is_template ? 'Да' : 'Нет'}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden md:table-cell">
+                        {scenario.prompt_template && scenario.prompt_template.name ? scenario.prompt_template.name : '—'}
+                      </td>
                       <td className="px-4 py-2">
                         <div className="flex gap-2 items-center">
                         <button 
@@ -2890,10 +3240,25 @@ const Admin = () => {
                   placeholder="Например: недовольный клиент, спокойный сотрудник"
                 ></textarea>
               </div>
+              <div>
+                <label htmlFor="scenario-prompt-template" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Промпт-шаблон:</label>
+                <select
+                  id="scenario-prompt-template"
+                  name="prompt_template_id"
+                  value={scenarioFormData.prompt_template_id || ''}
+                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, prompt_template_id: e.target.value ? parseInt(e.target.value) : null })}
+                  className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
+                >
+                  <option value="">Выберите промпт-шаблон (необязательно)</option>
+                  {promptTemplates.map(template => (
+                    <option key={template.id} value={template.id}>{template.name}</option>
+                  ))}
+                </select>
+              </div>
               <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowPromptTemplatesModal(true)}
+                  onClick={() => { setTemplateScenarioContext(null); setShowPromptTemplatesModal(true); }}
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >
                   Управление шаблонами системных промптов
@@ -3054,6 +3419,21 @@ const Admin = () => {
                   placeholder="Например: недовольный клиент, спокойный сотрудник"
                 ></textarea>
               </div>
+              <div className="mb-4">
+                <label htmlFor="edit-scenario-prompt-template" className="block text-gray-700 text-sm font-bold mb-2">Промпт-шаблон:</label>
+                <select
+                  id="edit-scenario-prompt-template"
+                  name="prompt_template_id"
+                  value={currentScenario.prompt_template_id || ''}
+                  onChange={(e) => setCurrentScenario({ ...currentScenario, prompt_template_id: e.target.value ? parseInt(e.target.value) : null })}
+                  className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
+                >
+                  <option value="">Выберите промпт-шаблон (необязательно)</option>
+                  {promptTemplates.map(template => (
+                    <option key={template.id} value={template.id}>{template.name}</option>
+                  ))}
+                </select>
+              </div>
               <div className="mb-4 flex items-center">
                 <input
                   type="checkbox"
@@ -3068,7 +3448,7 @@ const Admin = () => {
               <div className="flex justify-end mb-4">
                 <button
                   type="button"
-                  onClick={() => setShowPromptTemplatesModal(true)}
+                  onClick={() => { setTemplateScenarioContext(currentScenario.id); setShowPromptTemplatesModal(true); }}
                   className="text-sm text-blue-600 hover:text-blue-800"
                 >
                   Управление шаблонами системных промптов
@@ -3301,47 +3681,58 @@ const Admin = () => {
                 <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
-            
-            <div className="mb-4">
-              <button 
-                onClick={() => {
-                  fetchAvailableUsers();
-                  setShowAddUserToOrgModal(true);
-                }}
-                className="bg-green-500 text-white rounded px-3 py-1 hover:bg-green-700 transition"
-              >
-                Добавить пользователя
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="text-left text-blue-900 dark:text-blue-200">
-                    <th className="py-2 pr-4">Имя</th>
-                    <th className="py-2 pr-4">Email</th>
-                    <th className="py-2 pr-4">Роль</th>
-                    <th className="py-2">Действия</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {organizationUsers.map(user => (
-                    <tr key={user.id} className="border-b border-gray-200 dark:border-gray-700">
-                      <td className="py-2 pr-4 font-medium text-gray-800 dark:text-gray-100">{user.username}</td>
-                      <td className="py-2 pr-4 text-gray-700 dark:text-gray-300">{user.email}</td>
-                      <td className="py-2 pr-4 text-gray-700 dark:text-gray-300">{user.role}</td>
-                      <td className="py-2">
-                        <button 
-                          onClick={() => handleRemoveUserFromOrganization(currentOrganization.id, user.id)}
-                          className="bg-red-500 text-white rounded px-2 py-1 text-sm hover:bg-red-700 transition"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold">В организации</h3>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{organizationUsers.length || 0}</span>
+                </div>
+                <div className="border rounded p-2 max-h-72 overflow-y-auto">
+                  {(organizationUsers && organizationUsers.length > 0) ? (
+                    organizationUsers.map(u => (
+                      <div key={u.id} className="flex justify-between items-center py-1 border-b last:border-b-0 border-gray-200 dark:border-gray-700">
+                        <span className="truncate mr-2">{u.username} ({u.email})</span>
+                        <button
+                          onClick={() => handleRemoveUserFromOrganization(currentOrganization.id, u.id)}
+                          className="bg-red-500 hover:bg-red-700 text-white rounded px-2 py-1 text-sm"
                         >
                           Удалить
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-3 text-gray-500 dark:text-gray-400">Пользователи не добавлены</div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-lg font-semibold">Доступные пользователи</h3>
+                  <button 
+                    onClick={() => fetchAvailableUsers(currentOrganization.id)}
+                    className="text-sm px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                  >
+                    Обновить
+                  </button>
+                </div>
+                <div className="border rounded p-2 max-h-72 overflow-y-auto">
+                  {(availableUsers && availableUsers.length > 0) ? (
+                    availableUsers.map(user => (
+                      <div key={user.id} className="flex justify-between items-center py-1 border-b last:border-b-0 border-gray-200 dark:border-gray-700">
+                        <span className="truncate mr-2">{user.username} ({user.email})</span>
+                        <button 
+                          onClick={() => handleAddUserToOrganization(currentOrganization.id, user.id)}
+                          className="bg-green-500 text-white rounded px-2 py-1 text-sm hover:bg-green-700 transition"
+                        >
+                          Добавить
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-3 text-gray-500 dark:text-gray-400">Нет доступных пользователей для добавления</div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -3431,6 +3822,270 @@ const Admin = () => {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно шаблонов системных промптов */}
+      {showPromptTemplatesModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-4 sm:p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">Шаблоны системных промптов</h2>
+              <button onClick={() => setShowPromptTemplatesModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            {isSyncingTemplates && <div className="mb-3 text-xs text-gray-500">Синхронизация привязок...</div>}
+            {syncError && <div className="mb-3 text-xs text-red-500">{syncError}</div>}
+
+            {/* Упрощенная форма создания шаблона */}
+            <form onSubmit={handleCreatePromptTemplate} className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+              <input
+                type="text"
+                placeholder="Название шаблона"
+                value={promptTemplateForm.name}
+                onChange={e => setPromptTemplateForm(p => ({ ...p, name: e.target.value }))}
+                className="border rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
+                required
+              />
+              <input
+                type="text"
+                placeholder="Краткое описание"
+                value={promptTemplateForm.description}
+                onChange={e => setPromptTemplateForm(p => ({ ...p, description: e.target.value }))}
+                className="border rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
+                required
+              />
+              <textarea
+                placeholder="Опишите, как должен работать ИИ (роль, поведение, стиль общения)"
+                value={promptTemplateForm.prompt}
+                onChange={e => setPromptTemplateForm(p => ({ ...p, prompt: e.target.value }))}
+                className="border rounded-lg px-3 py-2 md:col-span-2 min-h-[120px] dark:bg-gray-800 dark:text-gray-100"
+                required
+              />
+              <div className="md:col-span-2 flex justify-end gap-2">
+                <button type="button" onClick={() => setPromptTemplateForm({ name: '', description: '', prompt: '' })} className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">Очистить</button>
+                <button type="submit" className="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white">Создать шаблон</button>
+              </div>
+            </form>
+
+            {/* Список шаблонов */}
+            <div className="overflow-x-auto border rounded-xl dark:border-gray-700">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+                    <th className="p-2 text-left">Название</th>
+                    <th className="p-2 text-left">Описание</th>
+                    <th className="p-2 text-left hidden md:table-cell">Обновление</th>
+                    <th className="p-2 text-left">Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {promptTemplates.map((t) => (
+                    <tr key={t.id} className="border-t dark:border-gray-700">
+                      <td className="p-2">
+                        <input value={t.name || ''} onChange={e => setPromptTemplates(list => list.map(x => x.id===t.id ? { ...x, name: e.target.value } : x))} className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:text-gray-100" disabled={t.is_builtin || t.id==='__builtin__'} />
+                      </td>
+                      <td className="p-2">
+                        <input value={t.description || ''} onChange={e => setPromptTemplates(list => list.map(x => x.id===t.id ? { ...x, description: e.target.value } : x))} className="border rounded px-2 py-1 w-full dark:bg-gray-800 dark:text-gray-100" disabled={t.is_builtin || t.id==='__builtin__'} />
+                      </td>
+                      <td className="p-2 hidden md:table-cell">
+                        {t.is_builtin || t.id==='__builtin__' ? (
+                          <span className="px-3 py-1 rounded bg-gray-300 dark:bg-gray-700 text-gray-800 dark:text-gray-100">Системный</span>
+                        ) : (
+                        <button onClick={() => handleUpdatePromptTemplate(t)} className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white">Сохранить</button>
+                        )}
+                      </td>
+                      <td className="p-2">
+                        <div className="flex flex-wrap gap-2 items-center">
+                          {activePromptTemplateId === t.id ? (
+                            <span className="px-3 py-1 rounded bg-emerald-600 text-white">Активный</span>
+                          ) : (
+                            <button onClick={() => handleActivatePromptTemplate(t.id)} className="px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-700 text-white">Сделать активным</button>
+                          )}
+                          {activePromptTemplateId === t.id && (
+                            <button onClick={handleClearActivePromptTemplate} className="px-3 py-1 rounded bg-gray-500 hover:bg-gray-600 text-white">Сбросить активный</button>
+                          )}
+                          <button onClick={() => { setPreviewTemplate(t); setPreviewInput(''); setPreviewResult(''); setShowPreviewModal(true); }} className="px-3 py-1 rounded bg-indigo-600 hover:bg-indigo-700 text-white">Проверить</button>
+                          <button onClick={() => handleEditTemplateContent(t)} className="px-3 py-1 rounded bg-purple-600 hover:bg-purple-700 text-white">Просмотреть содержимое</button>
+                          {t.is_builtin || t.id==='__builtin__' ? null : (
+                            <>
+                          <button onClick={() => handleUpdatePromptTemplate(t)} className="px-3 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white md:hidden">Сохранить</button>
+                          <button onClick={() => handleDeletePromptTemplate(t.id)} className="px-3 py-1 rounded bg-red-600 hover:bg-red-700 text-white">Удалить</button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {promptTemplates.length === 0 && (
+                    <tr><td className="p-3 text-center text-gray-500 dark:text-gray-400" colSpan={4}>Шаблонов пока нет</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно предпросмотра системного промпта */}
+      {showPreviewModal && previewTemplate && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-4 sm:p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100">Предпросмотр системного промпта</h3>
+              <button onClick={() => setShowPreviewModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="mb-2 text-sm text-gray-600 dark:text-gray-300">Шаблон: <b>{previewTemplate.name || previewTemplate.title}</b></div>
+            <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Черновой ввод (опционально):</label>
+            <textarea
+              value={previewInput}
+              onChange={e => setPreviewInput(e.target.value)}
+              className="w-full border rounded-xl px-3 py-2 dark:bg-gray-800 dark:text-gray-100 mb-3"
+              rows={4}
+              placeholder="Напишите пример реплики пользователя или контекста"
+            />
+            <div className="flex flex-wrap gap-2 justify-end mb-3">
+              <button
+                onClick={() => {
+                  // Сборка системного промпта из полей шаблона
+                  try {
+                    const parts = [];
+                    if (previewTemplate.content_start) parts.push(previewTemplate.content_start);
+                    if (previewTemplate.sections_json) {
+                      try {
+                        const js = typeof previewTemplate.sections_json === 'string' ? JSON.parse(previewTemplate.sections_json) : previewTemplate.sections_json;
+                        if (js.role) parts.push(`Роль: ${js.role}`);
+                        if (js.behavior) parts.push(`Поведение: ${js.behavior}`);
+                        if (Array.isArray(js.guidelines) && js.guidelines.length) {
+                          parts.push(`Рекомендации:\n- ${js.guidelines.join('\n- ')}`);
+                        }
+                      } catch {}
+                    }
+                    if (previewTemplate.forbidden_words) parts.push(`Избегай: ${previewTemplate.forbidden_words}`);
+                    if (previewTemplate.content_continue) parts.push(previewTemplate.content_continue);
+                    if (previewInput && previewInput.trim()) parts.push(`Контекст: ${previewInput.trim()}`);
+                    setPreviewResult(parts.filter(Boolean).join('\n\n'));
+                  } catch {
+                    setPreviewResult('Не удалось собрать системный промпт');
+                  }
+                }}
+                className="px-4 py-2 rounded bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                Проверить (диалог)
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    const token = localStorage.getItem('access_token');
+                    const res = await fetch('/api/chat/prompt-templates/preview', {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        content_start: previewTemplate.content_start || '',
+                        content_continue: previewTemplate.content_continue || '',
+                        forbidden_words: previewTemplate.forbidden_words || '',
+                        sections_json: previewTemplate.sections_json || null,
+                        context: previewInput || ''
+                      })
+                    });
+                    if (!res.ok) throw new Error('Сервер не смог собрать предпросмотр');
+                    const data = await res.json();
+                    setPreviewResult(data.dialog_prompt || '');
+                    setPreviewAnalysisResult(data.analysis_prompt || '');
+                  } catch (e) {
+                    toast.error(e.message || 'Ошибка предпросмотра');
+                  }
+                }}
+                className="px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Собрать на сервере
+              </button>
+              <button
+                onClick={() => {
+                  try {
+                    const base = [];
+                    base.push('Проанализируй диалог по обслуживанию клиентов на русском языке:');
+                    const js = (() => { try { return typeof previewTemplate.sections_json === 'string' ? JSON.parse(previewTemplate.sections_json) : previewTemplate.sections_json; } catch { return null; } })();
+                    if (js && js.role) base.push(`Роль ИИ: ${js.role}`);
+                    if (js && js.behavior) base.push(`Поведение: ${js.behavior}`);
+                    base.push('Диалог:\n<подставьте текст диалога>');
+                    base.push('Дай краткий анализ (не более 300 слов):');
+                    base.push('1. Как прошел разговор');
+                    base.push('2. Какие навыки общения показал пользователь');
+                    base.push('3. Что можно улучшить');
+                    base.push('4. Практические рекомендации');
+                    base.push('Отвечай только на русском языке, будь конструктивен.');
+                    setPreviewAnalysisResult(base.join('\n'));
+                  } catch {
+                    setPreviewAnalysisResult('Не удалось собрать промпт анализа');
+                  }
+                }}
+                className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                Показать промпт анализа
+              </button>
+            </div>
+            <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Итоговый системный промпт:</label>
+            <pre className="whitespace-pre-wrap border rounded-xl p-3 text-sm bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100">{previewResult || 'Нажмите «Проверить (диалог)», чтобы увидеть результат'}</pre>
+            <div className="mt-4">
+              <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">Промпт для анализа:</label>
+              <pre className="whitespace-pre-wrap border rounded-xl p-3 text-sm bg-gray-50 dark:bg-gray-800 text-gray-800 dark:text-gray-100">{previewAnalysisResult || 'Нажмите «Показать промпт анализа», чтобы увидеть результат'}</pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно редактирования содержимого шаблона */}
+      {showEditTemplateModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-4 sm:p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-gray-100">{editingTemplateReadOnly ? 'Просмотр системного шаблона' : 'Редактирование содержимого шаблона'}</h2>
+              <button onClick={() => setShowEditTemplateModal(false)} className="text-gray-500 hover:text-gray-700 dark:text-gray-300 dark:hover:text-white">
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTemplateContent} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input
+                  type="text"
+                  placeholder="Название"
+                  value={editingTemplate.name}
+                  onChange={e => setEditingTemplate(p => ({ ...p, name: e.target.value }))}
+                  className="border rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
+                  required
+                  disabled={editingTemplateReadOnly}
+                />
+                <input
+                  type="text"
+                  placeholder="Описание"
+                  value={editingTemplate.description}
+                  onChange={e => setEditingTemplate(p => ({ ...p, description: e.target.value }))}
+                  className="border rounded-lg px-3 py-2 dark:bg-gray-800 dark:text-gray-100"
+                  required
+                  disabled={editingTemplateReadOnly}
+                />
+              </div>
+              <textarea
+                placeholder="Опишите, как должен работать ИИ (роль, поведение, стиль общения)"
+                value={editingTemplate.prompt || ''}
+                onChange={e => setEditingTemplate(p => ({ ...p, prompt: e.target.value }))}
+                className="border rounded-lg px-3 py-2 w-full min-h-[120px] dark:bg-gray-800 dark:text-gray-100"
+                required
+                disabled={editingTemplateReadOnly}
+              />
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={() => setShowEditTemplateModal(false)} className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">Закрыть</button>
+                {editingTemplateReadOnly ? null : (
+                  <button type="submit" className="px-4 py-2 rounded bg-green-600 hover:bg-green-700 text-white">Сохранить изменения</button>
+                )}
+              </div>
+            </form>
           </div>
         </div>
       )}

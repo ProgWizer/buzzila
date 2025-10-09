@@ -110,6 +110,7 @@ class Scenario(db.Model):
     created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
     organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=True)  # Связь с организацией
     prompt_template = Column(Text, nullable=False)  # Шаблон для генерации диалога
+    prompt_template_id = Column(Integer, ForeignKey('prompt_templates.id'), nullable=True)  # Связь с шаблоном промпта
     type = Column(Enum(ScenarioType), nullable=False)  # Тип сценария
     difficulty = Column(Integer, default=1)  # Сложность (1-5)
     estimated_time = Column(Integer)  # Оценочное время (в минутах)
@@ -119,6 +120,7 @@ class Scenario(db.Model):
     organization = relationship("Organization", back_populates="scenarios")  # Связь с организацией
     category_obj = relationship("Category", back_populates="scenarios")  # Связь с категорией
     dialogs = relationship("Dialog", back_populates="scenario")  # Диалоги по сценарию
+    prompt_template_obj = relationship("PromptTemplate", backref="scenarios")  # Связь с шаблоном промпта
     user_progress = relationship("UserProgress", back_populates="scenario")  # Прогресс пользователей
 
     def get_user_progress(self, user_id):

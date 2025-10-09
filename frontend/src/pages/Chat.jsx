@@ -134,6 +134,11 @@ const Chat = () => {
   const [showArchived, setShowArchived] = useState(false);
   const [menuOpenId, setMenuOpenId] = useState(null);
   const [showHistoryMobile, setShowHistoryMobile] = useState(false);
+  // Новое: сворачивание истории на десктопе
+  const [showSidebarDesktop, setShowSidebarDesktop] = useState(true);
+  // Режим компактной (свернутой) истории на десктопе
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Удалено: локальное скрытие диалогов
 
   // Хелпер: проверяем наличие JWT и мягко редиректим
   const ensureTokenOrRedirect = () => {
@@ -159,7 +164,17 @@ const Chat = () => {
       });
       if (!res.ok) throw new Error('Не удалось загрузить список диалогов.');
       const data = await res.json();
-      setSessions(Array.isArray(data.sessions) ? data.sessions : []);
+      const rawSessions = Array.isArray(data.sessions) ? data.sessions : [];
+      const sortedSessions = [...rawSessions].sort((a, b) => {
+        const aActive = a.status === 'active';
+        const bActive = b.status === 'active';
+        if (aActive && !bActive) return -1;
+        if (!aActive && bActive) return 1;
+        const aTime = new Date(a.completed_at || a.updated_at || a.started_at || 0).getTime();
+        const bTime = new Date(b.completed_at || b.updated_at || b.started_at || 0).getTime();
+        return bTime - aTime; // более новые выше
+      });
+      setSessions(sortedSessions);
     } catch (e) {}
   };
 
@@ -261,6 +276,8 @@ const Chat = () => {
           } else {
             setMessages([]);
           }
+          // Обновим список сессий сразу, чтобы активный диалог был сверху
+          fetchSessions('all', showArchived);
         } catch (err) {
           setError(err.message);
         } finally {
@@ -617,88 +634,142 @@ const Chat = () => {
           onClose={() => setNewAchievements([])}
         />
       )}
-      <div className="w-full max-w-5xl flex gap-2">
+      <div className="w-full max-w-6xl flex gap-2">
         {/* Сайдбар истории (Desktop) */}
-        <div className="hidden lg:block w-1/3 bg-white dark:bg-[#23272f] rounded-2xl shadow-xl p-3 h-[80vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-base font-bold text-blue-900 dark:text-white">{showArchived ? 'Архив диалогов' : 'История диалогов'}</div>
-            <button
-              className={`${showArchived ? 'px-2 py-1 rounded text-xs border bg-blue-600 text-white border-blue-600' : 'px-2 py-1 rounded text-xs border border-gray-300 dark:border-[#444] text-blue-900 dark:text-white'}`}
-              onClick={toggleArchivedView}
-              title={showArchived ? 'Показать историю' : 'Показать архив'}
-            >{showArchived ? 'История' : 'Архив'}</button>
-          </div>
-          {!showArchived && (
-            <div className="flex gap-2 mb-3">
-              <button
-                className={`${filterStatus === 'all' ? 'px-2 py-1 rounded text-xs border bg-blue-600 text-white border-blue-600' : 'px-2 py-1 rounded text-xs border border-gray-300 dark:border-[#444] text-blue-900 dark:text-white'}`}
-                onClick={() => handleChangeFilter('all')}
-              >Все</button>
-              <button
-                className={`${filterStatus === 'active' ? 'px-2 py-1 rounded text-xs border bg-blue-600 text-white border-blue-600' : 'px-2 py-1 rounded text-xs border border-gray-300 dark:border-[#444] text-blue-900 dark:text-white'}`}
-                onClick={() => handleChangeFilter('active')}
-              >Активные</button>
-              <button
-                className={`${filterStatus === 'completed' ? 'px-2 py-1 rounded text-xs border bg-blue-600 text-white border-blue-600' : 'px-2 py-1 rounded text-xs border border-gray-300 dark:border-[#444] text-blue-900 dark:text-white'}`}
-                onClick={() => handleChangeFilter('completed')}
-              >Завершённые</button>
-            </div>
-          )}
-          {sessions.length === 0 && (
-            <div className="text-xs text-gray-500 dark:text-gray-400">{showArchived ? 'Архив пуст' : 'Нет сохранённых диалогов'}</div>
-          )}
-          <ul className="space-y-2">
-            {sessions.map(s => (
-              <li key={s.id}>
-                <div className="w-full p-2 rounded-md border border-gray-200 dark:border-[#444]">
-                  <div className="flex items-start gap-2">
+        {showSidebarDesktop ? (
+          <div className={`${sidebarCollapsed ? 'hidden lg:flex lg:w-16' : 'hidden lg:block lg:w-1/3'} bg-white/80 dark:bg-[#23272f]/80 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md rounded-2xl shadow-xl border border-gray-200 dark:border-[#444] ${sidebarCollapsed ? 'p-1.5' : 'p-3'} h-[80vh]`}
+          >
+            {/* Контент в развернутом состоянии */}
+            {!sidebarCollapsed && (
+              <div className="h-full flex flex-col overflow-hidden">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="text-base font-bold text-blue-900 dark:text-white">{showArchived ? 'Архив диалогов' : 'История диалогов'}</div>
+                  <div className="flex items-center gap-2">
                     <button
-                      className="flex-1 text-left min-w-0"
-                      onClick={() => handleSelectSession(s)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm font-semibold text-blue-900 dark:text-white truncate">{s.scenario_name || 'Сценарий'}</div>
-                        <span className={`text-[10px] px-2 py-0.5 rounded ${s.status === 'completed' ? 'bg-green-100 text-green-900 dark:bg-[#1e293b] dark:text-[#a7f3d0]' : 'bg-blue-100 text-blue-900 dark:bg-[#1e293b] dark:text-white'}`}>{s.status}</span>
-                      </div>
-                      {s.last_message?.text && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1 overflow-hidden whitespace-nowrap text-ellipsis">{s.last_message.text}</div>
-                      )}
-                      <div className="text-[10px] text-gray-400 mt-1">
-                        {s.completed_at ? 'Завершён' : 'Создан'}: {formatTime(s.completed_at || s.started_at)}
-                      </div>
-                    </button>
-                    {/* Меню действий */}
-                    <div className="relative">
-                      <button
-                        className="px-2 py-1 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1f2530] rounded"
-                        onClick={() => setMenuOpenId(menuOpenId === s.id ? null : s.id)}
-                        title="Действия"
-                      >⋯</button>
-                      {menuOpenId === s.id && (
-                        <div className="absolute right-0 mt-1 bg-white dark:bg-[#23272f] border border-gray-200 dark:border-[#444] rounded shadow z-10 min-w-[140px]">
-                          {showArchived ? (
-                            <button
-                              className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-[#1f2530]"
-                              onClick={() => { setMenuOpenId(null); handleRestore(s.id); }}
-                            >Разархивировать</button>
-                          ) : (
-                            <button
-                              className="w-full text-left px-3 py-2 text-xs text-red-700 hover:bg-gray-100 dark:hover:bg-[#1f2530]"
-                              onClick={() => { setMenuOpenId(null); handleArchive(s.id); }}
-                            >Скрыть</button>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                      className={`${showArchived ? 'px-2 py-1 rounded text-xs border bg-blue-600 text-white border-blue-600' : 'px-2 py-1 rounded text-xs border border-gray-300 dark:border-[#444] text-blue-900 dark:text-white'}`}
+                      onClick={toggleArchivedView}
+                      title={showArchived ? 'Показать историю' : 'Показать архив'}
+                    >{showArchived ? 'История' : 'Архив'}</button>
+                    {/* Крестик закрытия истории */}
+                    <button
+                      className="px-2 py-1 rounded-full border border-gray-300 dark:border-[#444] text-red-600 hover:bg-red-50 dark:hover:bg-[#1f2530] text-xs font-bold"
+                      title="Закрыть историю"
+                      onClick={() => setShowSidebarDesktop(false)}
+                    >✕</button>
                   </div>
                 </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+                {!showArchived && (
+                  <div className="flex gap-2 mb-3">
+                    <button
+                      className={`${filterStatus === 'all' ? 'px-2 py-1 rounded text-xs border bg-blue-600 text-white border-blue-600' : 'px-2 py-1 rounded text-xs border border-gray-300 dark:border-[#444] text-blue-900 dark:text-white'}`}
+                      onClick={() => handleChangeFilter('all')}
+                    >Все</button>
+                    <button
+                      className={`${filterStatus === 'active' ? 'px-2 py-1 rounded text-xs border bg-blue-600 text-white border-blue-600' : 'px-2 py-1 rounded text-xs border border-gray-300 dark:border-[#444] text-blue-900 dark:text-white'}`}
+                      onClick={() => handleChangeFilter('active')}
+                    >Активные</button>
+                    <button
+                      className={`${filterStatus === 'completed' ? 'px-2 py-1 rounded text-xs border bg-blue-600 text-white border-blue-600' : 'px-2 py-1 rounded text-xs border border-gray-300 dark:border-[#444] text-blue-900 dark:text-white'}`}
+                      onClick={() => handleChangeFilter('completed')}
+                    >Завершённые</button>
+                  </div>
+                )}
+                <div className="flex-1 overflow-y-auto">
+                  {sessions.length === 0 && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{showArchived ? 'Архив пуст' : 'Нет сохранённых диалогов'}</div>
+                  )}
+                  <ul className="space-y-2">
+                    {sessions.map(s => (
+                      <li key={s.id}>
+                        <div className="w-full p-2 rounded-md border border-gray-200 dark:border-[#444]">
+                          <div className="flex items-start gap-2">
+                            <button
+                              className="flex-1 text-left min-w-0"
+                              onClick={() => handleSelectSession(s)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm font-semibold text-blue-900 dark:text-white truncate">{s.scenario_name || 'Сценарий'}</div>
+                                <span className={`text-[10px] px-2 py-0.5 rounded ${s.status === 'completed' ? 'bg-green-100 text-green-900 dark:bg-[#1e293b] dark:text-[#a7f3d0]' : 'bg-blue-100 text-blue-900 dark:bg-[#1f293b] dark:text-white'}`}>{s.status}</span>
+                              </div>
+                              {s.last_message?.text && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-1 overflow-hidden whitespace-nowrap text-ellipsis">{s.last_message.text}</div>
+                              )}
+                              <div className="text-[10px] text-gray-400 mt-1">
+                                {s.completed_at ? 'Завершён' : 'Создан'}: {formatTime(s.completed_at || s.started_at)}
+                              </div>
+                            </button>
+                            {/* Меню действий */}
+                            <div className="relative">
+                              <button
+                                className="px-2 py-1 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#1f2530] rounded"
+                                onClick={() => setMenuOpenId(menuOpenId === s.id ? null : s.id)}
+                                title="Действия"
+                              >⋯</button>
+                              {menuOpenId === s.id && (
+                                <div className="absolute right-0 mt-1 bg-white dark:bg-[#23272f] border border-gray-200 dark:border-[#444] rounded shadow z-10 min-w-[160px]">
+                                  {showArchived ? (
+                                    <button
+                                      className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-[#1f2530]"
+                                      onClick={() => { setMenuOpenId(null); handleRestore(s.id); }}
+                                    >Разархивировать</button>
+                                  ) : (
+                                    <>
+                                      <button
+                                        className="w-full text-left px-3 py-2 text-xs hover:bg-gray-100 dark:hover:bg-[#1f2530]"
+                                        onClick={() => { setMenuOpenId(null); handleArchive(s.id); }}
+                                      >Скрыть</button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {/* Нижняя кнопка-стрелка для сворачивания */}
+                <div className="pt-2 mt-2 border-t border-gray-200 dark:border-[#444] flex justify-center">
+                  <button
+                    className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 dark:border-[#444] bg-white/80 dark:bg-[#23272f]/80 text-blue-900 dark:text-white shadow hover:bg-gray-100 dark:hover:bg-[#1f2530]"
+                    title="Свернуть историю"
+                    onClick={() => setSidebarCollapsed(true)}
+                  >
+                    {"<"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Компактное состояние: узкая рейка с кнопкой-разворотом */}
+            {sidebarCollapsed && (
+              <div className="h-full w-full flex flex-col items-center justify-end">
+                <button
+                  className="mb-2 inline-flex items-center justify-center w-8 h-8 rounded-full border border-gray-300 dark:border-[#444] bg-white/80 dark:bg-[#23272f]/80 text-blue-900 dark:text-white shadow hover:bg-gray-100 dark:hover:bg-[#1f2530]"
+                  title="Развернуть историю"
+                  onClick={() => setSidebarCollapsed(false)}
+                >
+                  {">"}
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          // Кнопка-«ушко» для открытия истории (Desktop)
+          <div className="hidden lg:flex w-6 items-start">
+            <button
+              className="mt-1 inline-flex items-center justify-center w-6 h-6 rounded-full border border-gray-300 dark:border-[#444] bg-white/80 dark:bg-[#23272f]/80 text-blue-900 dark:text-white shadow hover:bg-gray-100 dark:hover:bg-[#1f2530]"
+              title="Показать историю"
+              onClick={() => setShowSidebarDesktop(true)}
+            >
+              ☰
+            </button>
+          </div>
+        )}
 
         {/* Панель чата */}
-        <div className="flex-1 max-w-2xl bg-white dark:bg-[#23272f] rounded-2xl shadow-xl p-1.5 sm:p-6 flex flex-col h-[80vh] min-h-0">
+        <div className="flex-1 bg-white/80 dark:bg-[#23272f]/80 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md rounded-2xl shadow-xl border border-gray-200 dark:border-[#444] p-1.5 sm:p-6 flex flex-col h-[80vh] min-h-0">
           {/* Кнопка открытия истории для мобильных */}
           <div className="lg:hidden mb-2 flex justify-between items-center">
             <button
@@ -707,6 +778,17 @@ const Chat = () => {
             >История</button>
           </div>
           <div className="flex-1 min-h-0 flex flex-col">
+            <div className="flex items-center justify-between mb-2 sm:mb-3">
+              <button
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full border border-red-300 bg-red-600 text-white text-xs sm:text-sm font-bold shadow hover:bg-red-700 transition disabled:opacity-50"
+                title=""
+                onClick={handleFinish}
+                disabled={loading || !dialogId || analysis || dialogStatus !== 'active'}
+              >
+                <span style={{fontSize: 14, lineHeight: 1}}>✕</span>
+                {/* <span className="hidden sm:inline">Завершить</span> */}
+              </button>
+            </div>
             <div className="mb-1 sm:mb-4">
               <h1 className="text-base sm:text-2xl font-bold text-blue-900 dark:text-white break-words leading-tight">Диалог по сценарию</h1>
               <div className="text-xs sm:text-base text-gray-600 dark:text-gray-300 mt-0.5 break-words">{selectedScenarioName || scenario?.name} — {scenario?.description || ''}</div>
@@ -717,7 +799,7 @@ const Chat = () => {
             {error && <div className="text-red-500 text-center mb-2 text-xs sm:text-base">{error}</div>}
             <div
               ref={chatContainerRef}
-              className="flex-1 overflow-y-auto mb-1 sm:mb-4 bg-blue-50 dark:bg-[#181c23] rounded-lg p-1.5 sm:p-4 relative min-w-0"
+              className="flex-1 overflow-y-auto mb-1 sm:mb-4 bg-gradient-to-b from-blue-50/70 to-blue-100/40 dark:from-[#181c23] dark:to-[#141922] rounded-xl p-2 sm:p-4 relative min-w-0 border border-gray-100 dark:border-[#2a2f39]"
               onScroll={e => {
                 const container = e.target;
                 const threshold = 120;
@@ -728,8 +810,12 @@ const Chat = () => {
               {messages.length === 0 && !loading && <div className="text-gray-400 text-center text-xs sm:text-base">Начните диалог с моделью…</div>}
               {loading && messages.length === 0 && <div className="text-gray-400 text-center text-xs sm:text-base">Загрузка сессии...</div>}
               {messages.map((msg, idx) => (
-                <div key={idx} className={`mb-0.5 sm:mb-2 flex ${msg.role === 'user' ? 'justify-end' : msg.role === 'system' ? 'justify-center' : 'justify-start'}`}>
-                  <div className={`px-2.5 sm:px-4 py-1.5 rounded-xl max-w-[90%] sm:max-w-[70%] text-xs sm:text-base transition-all duration-200 shadow ${msg.role === 'user' ? 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white' : msg.role === 'system' ? 'bg-green-100 text-green-900 border border-green-400 dark:bg-[#1e293b] dark:text-[#a7f3d0] dark:border-[#10b981]' : 'bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-white'}`} style={{wordBreak: 'break-word', fontSize: '13px'}}>
+                <div key={idx} className={`mb-1 sm:mb-2 flex ${msg.role === 'user' ? 'justify-end' : msg.role === 'system' ? 'justify-center' : 'justify-start'}`}>
+                  <div className={`px-3 sm:px-4 py-2 rounded-2xl max-w-[92%] sm:max-w-[80%] text-xs sm:text-base transition-all duration-200 shadow-md border 
+                    ${msg.role === 'user' ? 'bg-blue-600 text-white border-blue-600 dark:bg-blue-600 dark:text-white dark:border-blue-600' : 
+                    msg.role === 'system' ? 'bg-green-50 text-green-900 border-green-300 dark:bg-[#1e293b] dark:text-[#a7f3d0] dark:border-[#10b981]' : 
+                    'bg-white text-gray-900 border-gray-200 dark:bg-gray-700 dark:text-white dark:border-gray-600'}`} 
+                    style={{wordBreak: 'break-word', fontSize: '13px'}}>
                     {msg.text}
                   </div>
                 </div>
@@ -742,10 +828,10 @@ const Chat = () => {
               <div ref={messagesEndRef} />
               {/* Удалено: синяя кнопка прокрутки страницы вниз */}
             </div>
-            <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2 mt-auto">
-              <div className="flex items-end gap-2 mt-auto">
+            <div className="sticky bottom-0 left-0 right-0 pt-1 sm:pt-2 mt-auto bg-white/80 dark:bg-[#23272f]/80 backdrop-blur supports-[backdrop-filter]:backdrop-blur-md rounded-b-2xl">
+              <div className="flex items-end gap-2">
                 <textarea
-                  className="flex-1 border border-gray-300 dark:border-[#444] rounded-lg px-3 py-2 
+                  className="flex-1 w-full border border-gray-300 dark:border-[#444] rounded-xl px-3 sm:px-4 py-2.5 sm:py-3 shadow-sm
                             text-sm sm:text-base focus:outline-none focus:border-blue-600 
                             dark:focus:border-blue-400 bg-white dark:bg-[#23272f] text-gray-900 
                             dark:text-white placeholder-gray-400 dark:placeholder-gray-400 
@@ -755,46 +841,29 @@ const Chat = () => {
                   value={input}
                   onChange={e => {
                     setInput(e.target.value);
-                    // автоувеличение
                     e.target.style.height = 'auto';
-                    const lineHeight = 24; // приблизительно
+                    const lineHeight = 24;
                     const maxRows = 6;
                     const maxHeight = lineHeight * maxRows;
                     e.target.style.height = Math.min(e.target.scrollHeight, maxHeight) + 'px';
                   }}
                   onKeyDown={e => {
-                    if (e.key === 'Enter' && e.shiftKey) {
-                      // новая строка
-                      return; // разрешаем перенос
-                    }
+                    if (e.key === 'Enter' && e.shiftKey) return;
                     if (e.key === 'Enter') {
                       e.preventDefault();
-                      if (!loading && dialogStatus === 'active' && input.trim()) {
-                        sendMessage();
-                      }
+                      if (!loading && dialogStatus === 'active' && input.trim()) sendMessage();
                     }
                   }}
                   disabled={isInputDisabled}
                 />
-
                 <button
-                  className="bg-blue-600 hover:bg-blue-800 text-white font-bold px-4 py-2 
-                            rounded-lg transition disabled:opacity-50 text-sm sm:text-base 
+                  className="bg-blue-600 hover:bg-blue-800 text-white font-bold px-4 h-[44px] sm:h-[44px]
+                            rounded-xl transition disabled:opacity-50 text-sm sm:text-base 
                             dark:bg-blue-600 dark:hover:bg-blue-800 dark:text-white"
                   onClick={() => sendMessage()}
                   disabled={isInputDisabled || !input.trim()}
                 >
                   {loading ? "..." : "Отправить"}
-                </button>
-
-                <button
-                  className="bg-red-600 hover:bg-red-800 text-white font-bold px-4 py-2 
-                            rounded-lg transition disabled:opacity-50 text-sm sm:text-base 
-                            dark:bg-red-600 dark:hover:bg-red-800 dark:text-white"
-                  onClick={handleFinish}
-                  disabled={loading || !dialogId || analysis || dialogStatus !== 'active'}
-                >
-                  Завершить
                 </button>
               </div>
             </div>
