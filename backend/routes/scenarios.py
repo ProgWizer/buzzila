@@ -68,6 +68,8 @@ def add_scenario():
         description=description,
         category=category,
         subcategory=subcategory,
+        sphere=category,  # сохраняем исходные поля для совместимости
+        situation=subcategory,
         mood=mood,
         language=language,
         user_role=user_role,
@@ -75,8 +77,7 @@ def add_scenario():
         ai_behavior=ai_behavior,
         prompt_template=prompt_template,
         prompt_template_id=prompt_template_id,  # Добавляем связь с шаблоном
-        # TODO: type, difficulty, organization_id, estimated_time - пока не заполняем, можно будет добавить позже
-        type=ScenarioType.CAFE,  # По умолчанию
+        type=ScenarioType.CAFE,  # По умолчанию, чтобы не нарушать NOT NULL
         difficulty=1, # Заглушка
         organization_id=organization_id  # Добавляем организацию
     )

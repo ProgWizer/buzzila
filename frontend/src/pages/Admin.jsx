@@ -147,7 +147,8 @@ const Admin = () => {
     ai_role: '',
     ai_behavior: '',
     is_template: false,
-    prompt_template_id: null,
+    // по умолчанию выбран встроенный системный промпт
+    prompt_template_id: '__builtin__',
   });
 
   const [showEditScenarioModal, setShowEditScenarioModal] = useState(false);
@@ -920,13 +921,22 @@ const Admin = () => {
       }
 
       setLoadingScenarios(true);
+      // Санитизация: builtin системный промпт не имеет server ID
+      const payload = {
+        ...scenarioFormData,
+        prompt_template_id:
+          scenarioFormData.prompt_template_id === '__builtin__' ||
+          scenarioFormData.prompt_template_id === ''
+            ? null
+            : scenarioFormData.prompt_template_id,
+      };
       const response = await fetch('/api/scenarios', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(scenarioFormData),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
@@ -948,6 +958,7 @@ const Admin = () => {
         ai_role: '',
         ai_behavior: '',
         is_template: false,
+        // по умолчанию в селекте показываем builtin, но в данных храним null
         prompt_template_id: null,
       });
       fetchScenarios(); // Обновляем список сценариев
@@ -3246,7 +3257,13 @@ const Admin = () => {
                   id="scenario-prompt-template"
                   name="prompt_template_id"
                   value={scenarioFormData.prompt_template_id || ''}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, prompt_template_id: e.target.value ? parseInt(e.target.value) : null })}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setScenarioFormData({
+                      ...scenarioFormData,
+                      prompt_template_id: v === '' ? null : (v === '__builtin__' ? '__builtin__' : parseInt(v))
+                    });
+                  }}
                   className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
                 >
                   <option value="">Выберите промпт-шаблон (необязательно)</option>

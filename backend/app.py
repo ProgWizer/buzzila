@@ -22,6 +22,9 @@ app.config.from_object(config)
 # (db.init_app регистрирует SQLAlchemy с приложением Flask)
 db.init_app(app)
 
+# Импортируем модели ПЕРЕД созданием таблиц
+from models.models import *
+
 with app.app_context():
     db.create_all()  # Создаем все таблицы в базе данных
     
