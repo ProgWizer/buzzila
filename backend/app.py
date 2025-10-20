@@ -28,6 +28,74 @@ from models.models import *
 with app.app_context():
     db.create_all()  # Создаем все таблицы в базе данных
     
+    # Автоматическая миграция: добавление колонки analysis_prompt
+    try:
+        # Проверяем, существует ли колонка analysis_prompt
+        result = db.session.execute(text("""
+            SELECT column_name 
+            FROM information_schema.columns 
+            WHERE table_name='prompt_templates' AND column_name='analysis_prompt'
+        """))
+        
+        if result.fetchone() is None:
+            # Колонка не существует, добавляем её
+            app.logger.info("Добавление колонки analysis_prompt в таблицу prompt_templates...")
+            
+            db.session.execute(text("""
+                ALTER TABLE prompt_templates 
+                ADD COLUMN analysis_prompt TEXT
+            """))
+            
+            # Устанавливаем дефолтное значение для существующих записей
+            default_analysis_prompt = """Ты опытный эксперт по обучению персонала. Проанализируй следующий диалог:
+
+**Контекст сценария:**
+- Сценарий: {scenario_description}
+- Роль сотрудника: {user_role}
+- Роль клиента (ИИ): {ai_role}
+
+**Диалог:**
+{dialog_text}
+
+**Задание:**
+Проведи детальный анализ диалога (не более 400 слов), структурированный по следующим пунктам:
+
+1. **Общая оценка диалога** (3-4 предложения)
+   - Как прошел разговор в целом
+   - Была ли достигнута цель коммуникации
+   - Общее впечатление от взаимодействия
+
+2. **Сильные стороны сотрудника** (3-4 конкретных примера)
+   - Какие навыки общения были продемонстрированы успешно
+   - Удачные фразы и подходы
+   - Проявление эмпатии, профессионализма
+
+3. **Области для улучшения** (3-4 конкретных момента)
+   - Что можно было сделать лучше
+   - Упущенные возможности
+   - Ошибки в коммуникации
+
+4. **Практические рекомендации** (3-5 конкретных советов)
+   - Что делать в следующий раз
+   - Какие фразы использовать
+   - Как улучшить подход
+
+Отвечай только на {dialog.scenario.language} языке. Будь конструктивен, конкретен и поддерживающ. Приводи примеры из диалога."""
+            
+            db.session.execute(
+                text("UPDATE prompt_templates SET analysis_prompt = :prompt WHERE analysis_prompt IS NULL OR analysis_prompt = ''"),
+                {"prompt": default_analysis_prompt}
+            )
+            
+            db.session.commit()
+            app.logger.info("✅ Колонка analysis_prompt успешно добавлена и заполнена дефолтными значениями")
+        else:
+            app.logger.info("Колонка analysis_prompt уже существует, миграция не требуется")
+            
+    except Exception as e:
+        app.logger.error(f"Ошибка при миграции analysis_prompt: {e}")
+        db.session.rollback()
+    
 # Настройка логирования (вывод в stdout)
 app.logger.handlers.clear()
 handler = logging.StreamHandler(sys.stdout)

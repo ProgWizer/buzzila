@@ -229,7 +229,7 @@ const Scenarios = () => {
       />
       <div className="space-y-2 max-h-[420px] overflow-y-auto pr-1">
         <button
-          className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${selectedOrganizationId === null ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+          className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${selectedOrganizationId === null ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
           onClick={() => setSelectedOrganizationId(null)}
         >
           <span>Все сценарии</span>
@@ -240,7 +240,7 @@ const Scenarios = () => {
           .map(org => (
           <button
             key={org.id}
-            className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${(selectedOrganizationId === org.id) ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600'}`}
+            className={`w-full text-left px-3 py-2 rounded-lg transition-colors flex items-center justify-between ${(selectedOrganizationId === org.id) ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
             onClick={() => setSelectedOrganizationId(org.id)}
           >
             <span className="truncate">{org.name}</span>
@@ -392,7 +392,7 @@ const Scenarios = () => {
                               key={situation.id}
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.97 }}
-                              className={`flex-none px-2.5 py-2 sm:p-6 border-2 border-transparent rounded-2xl shadow-lg cursor-pointer transition-all длительность-200 transition-colors text-center min-w-[90px] sm:min-w-[160px] ${
+                              className={`flex-none px-2.5 py-2 sm:p-6 border-2 border-transparent rounded-2xl shadow-lg cursor-pointer transition-all duration-200 transition-colors text-center min-w-[90px] sm:min-w-[160px] ${
                                 selectedSituation === situation.name
                                   ? 'bg-[#e0edff] dark:bg-blue-700 text-blue-900 dark:text-white border-blue-500'
                                   : 'bg-white dark:bg-gray-800 text-blue-700 dark:text-gray-200 hover:bg-blue-50 dark:hover:bg-gray-700'
@@ -458,14 +458,24 @@ const Scenarios = () => {
 
                 {/* Кнопка "Начать диалог" */}
                 <div className="text-center mt-4 sm:mt-16">
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleStartDialog}
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 xs:py-2 sm:py-4 px-3 xs:px-4 sm:px-12 rounded-xl text-xs xs:text-lg sm:text-2xl shadow-xl transition-all duration-200 w-full max-w-[120px] xs:max-w-xs sm:max-w-md min-w-[90px]"
-                  >
-                    Начать диалог
-                  </motion.button>
+                  <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center">
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={() => navigate('/chat')}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 xs:py-2 sm:py-4 px-3 xs:px-4 sm:px-12 rounded-xl text-xs xs:text-lg sm:text-2xl shadow-xl transition-all duration-200 w-full max-w-[120px] xs:max-w-xs sm:max-w-md min-w-[90px]"
+                    >
+                      История диалогов
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.97 }}
+                      onClick={handleStartDialog}
+                      className="bg-green-600 hover:bg-green-700 text-white font-bold py-1.5 xs:py-2 sm:py-4 px-3 xs:px-4 sm:px-12 rounded-xl text-xs xs:text-lg sm:text-2xl shadow-xl transition-all duration-200 w-full max-w-[120px] xs:max-w-xs sm:max-w-md min-w-[90px]"
+                    >
+                      Начать диалог
+                    </motion.button>
+                  </div>
                 </div>
               </div>
             )}

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, current_app
-from models.models import Scenario, Dialog, Message, Users, UserStatistics, Achievement, UserAchievement, UserProgress
+from models.models import Scenario, Dialog, Message, Users, UserStatistics, Achievement, UserAchievement, UserProgress, PromptTemplate
 from models.database import db
 import requests
 from datetime import datetime
@@ -33,7 +33,7 @@ ROLE_BREAK_PHRASES = [
     # Ниже сохранены сервисные фразы персонала; их наличие значит выход из роли клиента
     "скидка", "заменим", "компенсация", "предлагаю", "предложить",
     "мы всё исправим", "как вам будет удобнее",
-    "мы вам заменим", "мы вам поменяем", "мы вам почистим", "мы вам компенсируем", "мы вам организуем",
+    "мы вам заменим", "мы вам почистим", "мы вам компенсируем", "мы вам организуем",
     "я сейчас всё поменяю", "я сейчас всё решу", "я сейчас всё исправлю", "я сейчас всё организую", "я сейчас всё улажу",
     "давайте решим вопрос", "давайте решим ситуацию", "давайте решим проблему", "давайте уладим ситуацию",
     "организуем замену", "организуем чистку", "организуем возврат", "организуем компенсацию", "организуем решение",
@@ -603,11 +603,7 @@ def complete_dialog_with_simulation_command(dialog, current_user, message_conten
         
         # Получаем duration из данных
         duration = data.get('duration', 0)
-        try:
-            dialog.duration = int(duration) if duration else 0
-        except (ValueError, TypeError):
-            dialog.duration = 0
-
+        
         # Обновляем статус диалога
         dialog.status = 'completed'
         dialog.completed_at = datetime.utcnow()
@@ -640,22 +636,60 @@ def complete_dialog_with_simulation_command(dialog, current_user, message_conten
         analysis = "Анализ временно недоступен"
         
         if dialog_text and len(dialog_text) > 10:
-            analysis_prompt = f"""Проанализируй диалог по обслуживанию клиентов на русском языке:
+            # Пытаемся получить промпт анализа из шаблона сценария
+            analysis_prompt_template = None
+            if dialog.scenario and dialog.scenario.prompt_template_id:
+                try:
+                    template = PromptTemplate.query.get(dialog.scenario.prompt_template_id)
+                    if template and template.analysis_prompt:
+                        analysis_prompt_template = template.analysis_prompt
+                except Exception as e:
+                    current_app.logger.warning(f"Не удалось загрузить шаблон анализа: {e}")
+            
+            # Если есть кастомный промпт из шаблона, используем его
+            if analysis_prompt_template:
+                # Подставляем переменные в шаблон
+                analysis_prompt = analysis_prompt_template.replace('{dialog_text}', dialog_text)
+                analysis_prompt = analysis_prompt.replace('{scenario_description}', getattr(dialog.scenario, 'description', 'Неизвестный сценарий'))
+                analysis_prompt = analysis_prompt.replace('{user_role}', getattr(dialog.scenario, 'user_role', 'Сотрудник'))
+                analysis_prompt = analysis_prompt.replace('{ai_role}', getattr(dialog.scenario, 'ai_role', 'Клиент'))
+                analysis_prompt = analysis_prompt.replace('{language}', getattr(dialog.scenario, 'language', 'русском'))
+            else:
+                # Используем улучшенный дефолтный промпт
+                analysis_prompt = f"""Ты опытный эксперт по обучению персонала в сфере обслуживания клиентов. Проанализируй следующий диалог:
 
-Сценарий: {getattr(dialog.scenario, 'description', 'Неизвестный сценарий')}
-Роль пользователя: {getattr(dialog.scenario, 'user_role', 'Сотрудник')}
-Роль ИИ: {getattr(dialog.scenario, 'ai_role', 'Клиент')}
+**Контекст сценария:**
+- Сценарий: {getattr(dialog.scenario, 'description')}
+- Роль сотрудника: {getattr(dialog.scenario, 'user_role')}
+- Роль клиента (ИИ): {getattr(dialog.scenario, 'ai_role')}
 
-Диалог:
+**Диалог:**
 {dialog_text}
 
-Дай краткий анализ (не более 300 слов):
-1. Как прошел разговор
-2. Какие навыки общения показал пользователь
-3. Что можно улучшить
-4. Практические рекомендации
+**Задание:**
+Проведи детальный анализ диалога (не более 400 слов), структурированный по следующим пунктам:
 
-Отвечай только на русском языке, будь конструктивен."""
+1. **Общая оценка диалога** (3-4 предложения)
+   - Как прошел разговор в целом
+   - Была ли достигнута цель коммуникации
+   - Общее впечатление от взаимодействия
+
+2. **Сильные стороны сотрудника** (3-4 конкретных примера)
+   - Какие навыки общения были продемонстрированы успешно
+   - Удачные фразы и подходы
+   - Проявление эмпатии, профессионализма
+
+3. **Области для улучшения** (3-4 конкретных момента)
+   - Что можно было сделать лучше
+   - Упущенные возможности
+   - Ошибки в коммуникации
+
+4. **Практические рекомендации** (3-5 конкретных советов)
+   - Что делать в следующий раз
+   - Какие фразы использовать
+   - Как улучшить подход
+
+Отвечай только на {dialog.scenario.language} языке. Будь конструктивен, конкретен и поддерживающ. Приводи примеры из диалога."""
 
             # Пытаемся получить анализ
             for attempt in range(3):
@@ -904,22 +938,60 @@ def finish_dialog(dialog_id):
             ])
 
             if dialog_text and len(dialog_text) > 10:
-                analysis_prompt = f'''Проанализируй диалог по обслуживанию клиентов на русском языке:
+                # Пытаемся получить промпт анализа из шаблона сценария
+                analysis_prompt_template = None
+                if dialog.scenario and dialog.scenario.prompt_template_id:
+                    try:
+                        template = PromptTemplate.query.get(dialog.scenario.prompt_template_id)
+                        if template and template.analysis_prompt:
+                            analysis_prompt_template = template.analysis_prompt
+                    except Exception as e:
+                        current_app.logger.warning(f"Не удалось загрузить шаблон анализа: {e}")
+                
+                # Если есть кастомный промпт из шаблона, используем его
+                if analysis_prompt_template:
+                    # Подставляем переменные в шаблон
+                    analysis_prompt = analysis_prompt_template.replace('{dialog_text}', dialog_text)
+                    analysis_prompt = analysis_prompt.replace('{scenario_description}', getattr(dialog.scenario, 'description', 'Неизвестный сценарий'))
+                    analysis_prompt = analysis_prompt.replace('{user_role}', getattr(dialog.scenario, 'user_role', 'Сотрудник'))
+                    analysis_prompt = analysis_prompt.replace('{ai_role}', getattr(dialog.scenario, 'ai_role', 'Клиент'))
+                    analysis_prompt = analysis_prompt.replace('{language}', getattr(dialog.scenario, 'language', 'русском'))
+                else:
+                    # Используем улучшенный дефолтный промпт
+                    analysis_prompt = f"""Ты опытный эксперт по обучению персонала в сфере обслуживания клиентов. Проанализируй следующий диалог:
 
-Сценарий: {getattr(dialog.scenario, 'description', 'Неизвестный сценарий')}
-Роль пользователя: {getattr(dialog.scenario, 'user_role', 'Сотрудник')}  
-Роль ИИ: {getattr(dialog.scenario, 'ai_role', 'Клиент')}
+**Контекст сценария:**
+- Сценарий: {getattr(dialog.scenario, 'description')}
+- Роль сотрудника: {getattr(dialog.scenario, 'user_role')}
+- Роль клиента (ИИ): {getattr(dialog.scenario, 'ai_role')}
 
-Диалог:
+**Диалог:**
 {dialog_text}
 
-Дай краткий анализ (не более 300 слов):
-1. Как прошел разговор
-2. Навыки общения пользователя
-3. Рекомендации по улучшению
+**Задание:**
+Проведи детальный анализ диалога (не более 400 слов), структурированный по следующим пунктам:
 
-Отвечай только на русском языке.'''
+1. **Общая оценка диалога** (3-4 предложения)
+   - Как прошел разговор в целом
+   - Была ли достигнута цель коммуникации
+   - Общее впечатление от взаимодействия
 
+2. **Сильные стороны сотрудника** (3-4 конкретных примера)
+   - Какие навыки общения были продемонстрированы успешно
+   - Удачные фразы и подходы
+   - Проявление эмпатии, профессионализма
+
+3. **Области для улучшения** (3-4 конкретных момента)
+   - Что можно было сделать лучше
+   - Упущенные возможности
+   - Ошибки в коммуникации
+
+4. **Практические рекомендации** (3-5 конкретных советов)
+   - Что делать в следующий раз
+   - Какие фразы использовать
+   - Как улучшить подход
+
+Отвечай только на {getattr(dialog.scenario, 'language')} языке. Будь конструктивен, конкретен и поддерживающ. Приводи примеры из диалога."""
                 # Пытаемся получить анализ
                 for attempt in range(3):
                     try:
@@ -1272,7 +1344,7 @@ def preview_prompt_templates():
     """
     Сборка предпросмотра системного промпта и промпта анализа на сервере
     из переданных полей шаблона (без сохранения).
-    Ожидается JSON: { content_start, content_continue, forbidden_words, sections_json, context }
+    Ожидается JSON: { content_start, content_continue, forbidden_words, sections_json, context, analysis_prompt }
     """
     try:
         data = request.get_json(silent=True) or {}
@@ -1281,6 +1353,7 @@ def preview_prompt_templates():
         forbidden_words = (data.get('forbidden_words') or '').strip()
         context_text = (data.get('context') or '').strip()
         sections_json = data.get('sections_json')
+        analysis_prompt_custom = (data.get('analysis_prompt') or '').strip()
 
         role_text = behavior_text = ''
         guidelines = []
@@ -1313,23 +1386,28 @@ def preview_prompt_templates():
 
         dialog_prompt = "\n\n".join([p for p in parts if p]) or ''
 
-        analysis_parts = [
-            'Проанализируй диалог по обслуживанию клиентов на русском языке:',
-        ]
-        if role_text:
-            analysis_parts.append(f"Роль ИИ: {role_text}")
-        if behavior_text:
-            analysis_parts.append(f"Поведение: {behavior_text}")
-        analysis_parts.extend([
-            'Диалог:\n<подставьте текст диалога>',
-            'Дай краткий анализ (не более 300 слов):',
-            '1. Как прошел разговор',
-            '2. Какие навыки общения показал пользователь',
-            '3. Что можно улучшить',
-            '4. Практические рекомендации',
-            'Отвечай только на русском языке, будь конструктивен.'
-        ])
-        analysis_prompt = "\n".join(analysis_parts)
+        # Используем кастомный промпт анализа, если он передан
+        if analysis_prompt_custom:
+            analysis_prompt = analysis_prompt_custom
+        else:
+            # Иначе генерируем дефолтный
+            analysis_parts = [
+                'Проанализируй диалог по обслуживанию клиентов на русском языке:',
+            ]
+            if role_text:
+                analysis_parts.append(f"Роль ИИ: {role_text}")
+            if behavior_text:
+                analysis_parts.append(f"Поведение: {behavior_text}")
+            analysis_parts.extend([
+                'Диалог:\n<подставьте текст диалога>',
+                'Дай краткий анализ (не более 300 слов):',
+                '1. Как прошел разговор',
+                '2. Какие навыки общения показал пользователь',
+                '3. Что можно улучшить',
+                '4. Практические рекомендации',
+                'Отвечай только на русском языке, будь конструктивен.'
+            ])
+            analysis_prompt = "\n".join(analysis_parts)
 
         return jsonify({'dialog_prompt': dialog_prompt, 'analysis_prompt': analysis_prompt}), 200
     except Exception as e:
@@ -1487,9 +1565,11 @@ def generate_system_prompt_for_continue(scenario):
 
 СТРОГИЕ ПРАВИЛА:
 - Ты ВСЕГДА {scenario.ai_role}, НИКОГДА не меняй роль
-- ЗАПРЕЩЕНО: извиняться, предлагать помощь, решения, компенсации, скидки
-- ЗАПРЕЩЕНО: быть вежливым, дружелюбным, понимающим
-- ЗАПРЕЩЕНО: говорить фразы официанта/персонала (\"мы поможем\", \"решим проблему\")
+- ЗАПРЕЩЕНО: извиняться, предлагать помощь
+- ЗАПРЕЩЕНО: переходить на роль пользователя есть только твоя роль и ты говоришь от лица своей роли
+- ЗАПРЕЩЕНО: говорить фразы не своей роли! (\"мы поможем\", \"решим проблему\")
+- Всегда говори от лица своей роли, НЕ говори фразы не своей роли!
+- НЕ говори фразы типа \"давайте обсудим\", \"я готов помочь\", \"извините\"
 
 ТВОЕ ПОВЕДЕНИЕ: {scenario.ai_behavior}{mood_text}
 

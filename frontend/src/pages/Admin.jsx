@@ -173,8 +173,44 @@ const Admin = () => {
   const [promptTemplateForm, setPromptTemplateForm] = useState({
     name: '',
     description: '',
-    prompt: '', // Упрощенная форма - только основной промпт
+    prompt: '', 
   });
+// Дефолтный промпт для анализа диалога
+const DEFAULT_ANALYSIS_PROMPT = `Ты опытный эксперт по обучению персонала в сфере обслуживания клиентов. Проанализируй следующий диалог:
+
+**Контекст сценария:**
+- Сценарий: {scenario_description}
+- Роль сотрудника: {user_role}
+- Роль клиента (ИИ): {ai_role}
+
+**Диалог:**
+{dialog_text}
+
+**Задание:**
+Проведи детальный анализ диалога (не более 400 слов), структурированный по следующим пунктам:
+
+1. **Общая оценка диалога** (3-4 предложения)
+   - Как прошел разговор в целом
+   - Была ли достигнута цель коммуникации
+   - Общее впечатление от взаимодействия
+
+2. **Сильные стороны сотрудника** (3-4 конкретных примера)
+   - Какие навыки общения были продемонстрированы успешно
+   - Удачные фразы и подходы
+   - Проявление эмпатии, профессионализма
+
+3. **Области для улучшения** (3-4 конкретных момента)
+   - Что можно было сделать лучше
+   - Упущенные возможности
+   - Ошибки в коммуникации
+
+4. **Практические рекомендации** (3-5 конкретных советов)
+   - Что делать в следующий раз
+   - Какие фразы использовать
+   - Как улучшить подход
+
+Отвечай только на {language} языке. Будь конструктивен, конкретен и поддерживающ. Приводи примеры из диалога.`;
+
   const [activePromptTemplateId, setActivePromptTemplateId] = useState(null);
   // Состояния синхронизации привязки шаблонов к сценариям
   const [isSyncingTemplates, setIsSyncingTemplates] = useState(false);
@@ -328,6 +364,10 @@ const Admin = () => {
   const [orgAssignedScenarios, setOrgAssignedScenarios] = useState([]);
   const [orgAvailableScenarios, setOrgAvailableScenarios] = useState([]);
   const [loadingOrgScenarios, setLoadingOrgScenarios] = useState(false);
+
+  // Поиск в модальных окнах организаций
+const [orgUsersSearchQuery, setOrgUsersSearchQuery] = useState('');
+const [orgScenariosSearchQuery, setOrgScenariosSearchQuery] = useState('');
 
   // Поиск и пагинация организаций
   const [organizationsSearchQuery, setOrganizationsSearchQuery] = useState('');
@@ -1725,7 +1765,8 @@ const Admin = () => {
             "Будьте полезным и вежливым",
             "Избегайте запрещенных тем"
           ]
-        })
+        }),
+        analysis_prompt: DEFAULT_ANALYSIS_PROMPT
       };
       
       const res = await fetch('/api/prompt-templates', {
@@ -3691,34 +3732,66 @@ const Admin = () => {
       {/* Модальное окно пользователей организации */}
       {showOrganizationUsersModal && currentOrganization && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">Пользователи организации: {currentOrganization.name}</h2>
-              <button onClick={() => setShowOrganizationUsersModal(false)} className="text-gray-500 hover:text-gray-700">
+              <button onClick={() => {
+                setShowOrganizationUsersModal(false);
+                setOrgUsersSearchQuery('');
+              }} className="text-gray-500 hover:text-gray-700">
                 <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
+            
+            {/* Поисковая строка */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Поиск по имени или email..."
+                value={orgUsersSearchQuery}
+                onChange={(e) => setOrgUsersSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold">В организации</h3>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">{organizationUsers.length || 0}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    {organizationUsers.filter(u => 
+                      u.username.toLowerCase().includes(orgUsersSearchQuery.toLowerCase()) ||
+                      u.email.toLowerCase().includes(orgUsersSearchQuery.toLowerCase())
+                    ).length || 0}
+                  </span>
                 </div>
-                <div className="border rounded p-2 max-h-72 overflow-y-auto">
+                <div className="border rounded p-2 max-h-96 overflow-y-auto">
                   {(organizationUsers && organizationUsers.length > 0) ? (
-                    organizationUsers.map(u => (
-                      <div key={u.id} className="flex justify-between items-center py-1 border-b last:border-b-0 border-gray-200 dark:border-gray-700">
-                        <span className="truncate mr-2">{u.username} ({u.email})</span>
-                        <button
-                          onClick={() => handleRemoveUserFromOrganization(currentOrganization.id, u.id)}
-                          className="bg-red-500 hover:bg-red-700 text-white rounded px-2 py-1 text-sm"
-                        >
-                          Удалить
-                        </button>
-                      </div>
-                    ))
+                    organizationUsers
+                      .filter(u => 
+                        u.username.toLowerCase().includes(orgUsersSearchQuery.toLowerCase()) ||
+                        u.email.toLowerCase().includes(orgUsersSearchQuery.toLowerCase())
+                      )
+                      .map(u => (
+                        <div key={u.id} className="flex justify-between items-center py-2 px-2 border-b last:border-b-0 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                          <span className="truncate mr-2">{u.username} ({u.email})</span>
+                          <button
+                            onClick={() => handleRemoveUserFromOrganization(currentOrganization.id, u.id)}
+                            className="bg-red-500 hover:bg-red-700 text-white rounded px-3 py-1 text-sm transition flex-shrink-0"
+                          >
+                            Удалить
+                          </button>
+                        </div>
+                      ))
                   ) : (
                     <div className="text-center py-3 text-gray-500 dark:text-gray-400">Пользователи не добавлены</div>
+                  )}
+                  {organizationUsers && organizationUsers.length > 0 && 
+                  organizationUsers.filter(u => 
+                    u.username.toLowerCase().includes(orgUsersSearchQuery.toLowerCase()) ||
+                    u.email.toLowerCase().includes(orgUsersSearchQuery.toLowerCase())
+                  ).length === 0 && (
+                    <div className="text-center py-3 text-gray-500 dark:text-gray-400">Ничего не найдено</div>
                   )}
                 </div>
               </div>
@@ -3727,26 +3800,38 @@ const Admin = () => {
                   <h3 className="text-lg font-semibold">Доступные пользователи</h3>
                   <button 
                     onClick={() => fetchAvailableUsers(currentOrganization.id)}
-                    className="text-sm px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200"
+                    className="text-sm px-2 py-1 rounded bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-700 transition"
                   >
                     Обновить
                   </button>
                 </div>
-                <div className="border rounded p-2 max-h-72 overflow-y-auto">
+                <div className="border rounded p-2 max-h-96 overflow-y-auto">
                   {(availableUsers && availableUsers.length > 0) ? (
-                    availableUsers.map(user => (
-                      <div key={user.id} className="flex justify-between items-center py-1 border-b last:border-b-0 border-gray-200 dark:border-gray-700">
-                        <span className="truncate mr-2">{user.username} ({user.email})</span>
-                        <button 
-                          onClick={() => handleAddUserToOrganization(currentOrganization.id, user.id)}
-                          className="bg-green-500 text-white rounded px-2 py-1 text-sm hover:bg-green-700 transition"
-                        >
-                          Добавить
-                        </button>
-                      </div>
-                    ))
+                    availableUsers
+                      .filter(user => 
+                        user.username.toLowerCase().includes(orgUsersSearchQuery.toLowerCase()) ||
+                        user.email.toLowerCase().includes(orgUsersSearchQuery.toLowerCase())
+                      )
+                      .map(user => (
+                        <div key={user.id} className="flex justify-between items-center py-2 px-2 border-b last:border-b-0 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                          <span className="truncate mr-2">{user.username} ({user.email})</span>
+                          <button 
+                            onClick={() => handleAddUserToOrganization(currentOrganization.id, user.id)}
+                            className="bg-green-500 text-white rounded px-3 py-1 text-sm hover:bg-green-700 transition flex-shrink-0"
+                          >
+                            Добавить
+                          </button>
+                        </div>
+                      ))
                   ) : (
                     <div className="text-center py-3 text-gray-500 dark:text-gray-400">Нет доступных пользователей для добавления</div>
+                  )}
+                  {availableUsers && availableUsers.length > 0 && 
+                  availableUsers.filter(user => 
+                    user.username.toLowerCase().includes(orgUsersSearchQuery.toLowerCase()) ||
+                    user.email.toLowerCase().includes(orgUsersSearchQuery.toLowerCase())
+                  ).length === 0 && (
+                    <div className="text-center py-3 text-gray-500 dark:text-gray-400">Ничего не найдено</div>
                   )}
                 </div>
               </div>
@@ -3783,57 +3868,123 @@ const Admin = () => {
         </div>
       )}
 
+
       {/* Модальное окно сценариев организации */}
       {showOrgScenariosModal && currentOrgForScenarios && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-2xl font-bold">Сценарии организации: {currentOrgForScenarios.name}</h2>
-              <button onClick={() => setShowOrgScenariosModal(false)} className="text-gray-500 hover:text-gray-700">
+              <button onClick={() => {
+                setShowOrgScenariosModal(false);
+                setOrgScenariosSearchQuery('');
+              }} className="text-gray-500 hover:text-gray-700">
                 <XMarkIcon className="w-6 h-6" />
               </button>
             </div>
+            
+            {/* Поисковая строка */}
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Поиск по названию или описанию сценария..."
+                value={orgScenariosSearchQuery}
+                onChange={(e) => setOrgScenariosSearchQuery(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
             {loadingOrgScenarios ? (
               <div className="text-blue-500 animate-pulse">Загрузка...</div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Назначенные</h3>
-                  <ul className="border rounded p-2 max-h-72 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold">Назначенные</h3>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {orgAssignedScenarios.filter(s => 
+                        s.name.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()) ||
+                        (s.description && s.description.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()))
+                      ).length}
+                    </span>
+                  </div>
+                  <ul className="border rounded p-2 max-h-96 overflow-y-auto">
                     {orgAssignedScenarios.length === 0 ? (
-                      <li className="text-gray-400">Нет назначенных сценариев</li>
+                      <li className="text-gray-400 text-center py-3">Нет назначенных сценариев</li>
                     ) : (
-                      orgAssignedScenarios.map(s => (
-                        <li key={s.id} className="flex justify-between items-center py-1">
-                          <span>{s.name}</span>
-                          <button
-                            onClick={() => handleUnassignScenarioFromOrg(currentOrgForScenarios.id, s.id)}
-                            className="bg-red-500 hover:bg-red-700 text-white rounded px-2 py-1 text-sm"
-                          >
-                            Удалить
-                          </button>
-                        </li>
-                      ))
+                      orgAssignedScenarios
+                        .filter(s => 
+                          s.name.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()) ||
+                          (s.description && s.description.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()))
+                        )
+                        .map(s => (
+                          <li key={s.id} className="flex justify-between items-center py-2 px-2 border-b last:border-b-0 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                            <div className="flex-1 mr-2">
+                              <div className="font-medium">{s.name}</div>
+                              {s.description && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{s.description}</div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleUnassignScenarioFromOrg(currentOrgForScenarios.id, s.id)}
+                              className="bg-red-500 hover:bg-red-700 text-white rounded px-3 py-1 text-sm transition flex-shrink-0"
+                            >
+                              Удалить
+                            </button>
+                          </li>
+                        ))
+                    )}
+                    {orgAssignedScenarios.length > 0 && 
+                     orgAssignedScenarios.filter(s => 
+                       s.name.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()) ||
+                       (s.description && s.description.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()))
+                     ).length === 0 && (
+                      <li className="text-gray-400 text-center py-3">Ничего не найдено</li>
                     )}
                   </ul>
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold mb-2">Доступные</h3>
-                  <ul className="border rounded p-2 max-h-72 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-lg font-semibold">Доступные</h3>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      {orgAvailableScenarios.filter(s => 
+                        s.name.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()) ||
+                        (s.description && s.description.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()))
+                      ).length}
+                    </span>
+                  </div>
+                  <ul className="border rounded p-2 max-h-96 overflow-y-auto">
                     {orgAvailableScenarios.length === 0 ? (
-                      <li className="text-gray-400">Нет доступных сценариев</li>
+                      <li className="text-gray-400 text-center py-3">Нет доступных сценариев</li>
                     ) : (
-                      orgAvailableScenarios.map(s => (
-                        <li key={s.id} className="flex justify-between items-center py-1">
-                          <span>{s.name}</span>
-                          <button
-                            onClick={() => handleAssignScenarioToOrg(currentOrgForScenarios.id, s.id)}
-                            className="bg-green-500 hover:bg-green-700 text-white rounded px-2 py-1 text-sm"
-                          >
-                            Добавить
-                          </button>
-                        </li>
-                      ))
+                      orgAvailableScenarios
+                        .filter(s => 
+                          s.name.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()) ||
+                          (s.description && s.description.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()))
+                        )
+                        .map(s => (
+                          <li key={s.id} className="flex justify-between items-center py-2 px-2 border-b last:border-b-0 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition">
+                            <div className="flex-1 mr-2">
+                              <div className="font-medium">{s.name}</div>
+                              {s.description && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate">{s.description}</div>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => handleAssignScenarioToOrg(currentOrgForScenarios.id, s.id)}
+                              className="bg-green-500 hover:bg-green-700 text-white rounded px-3 py-1 text-sm transition flex-shrink-0"
+                            >
+                              Добавить
+                            </button>
+                          </li>
+                        ))
+                    )}
+                    {orgAvailableScenarios.length > 0 && 
+                     orgAvailableScenarios.filter(s => 
+                       s.name.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()) ||
+                       (s.description && s.description.toLowerCase().includes(orgScenariosSearchQuery.toLowerCase()))
+                     ).length === 0 && (
+                      <li className="text-gray-400 text-center py-3">Ничего не найдено</li>
                     )}
                   </ul>
                 </div>
@@ -4022,24 +4173,9 @@ const Admin = () => {
                 Собрать на сервере
               </button>
               <button
-                onClick={() => {
-                  try {
-                    const base = [];
-                    base.push('Проанализируй диалог по обслуживанию клиентов на русском языке:');
-                    const js = (() => { try { return typeof previewTemplate.sections_json === 'string' ? JSON.parse(previewTemplate.sections_json) : previewTemplate.sections_json; } catch { return null; } })();
-                    if (js && js.role) base.push(`Роль ИИ: ${js.role}`);
-                    if (js && js.behavior) base.push(`Поведение: ${js.behavior}`);
-                    base.push('Диалог:\n<подставьте текст диалога>');
-                    base.push('Дай краткий анализ (не более 300 слов):');
-                    base.push('1. Как прошел разговор');
-                    base.push('2. Какие навыки общения показал пользователь');
-                    base.push('3. Что можно улучшить');
-                    base.push('4. Практические рекомендации');
-                    base.push('Отвечай только на русском языке, будь конструктивен.');
-                    setPreviewAnalysisResult(base.join('\n'));
-                  } catch {
-                    setPreviewAnalysisResult('Не удалось собрать промпт анализа');
-                  }
+                onClick={() => { 
+                  const analysisPrompt = previewTemplate.analysis_prompt || DEFAULT_ANALYSIS_PROMPT;
+                  setPreviewAnalysisResult(analysisPrompt);
                 }}
                 className="px-4 py-2 rounded bg-emerald-600 hover:bg-emerald-700 text-white"
               >
@@ -4096,6 +4232,24 @@ const Admin = () => {
                 required
                 disabled={editingTemplateReadOnly}
               />
+                            <div>
+                <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
+                  Промпт для анализа диалога:
+                </label>
+                <textarea
+                  placeholder="Введите промпт для анализа. Доступные переменные: {dialog_text}, {scenario_description}, {user_role}, {ai_role}"
+                  value={editingTemplate.analysis_prompt || DEFAULT_ANALYSIS_PROMPT}
+                  onChange={e => setEditingTemplate(p => ({ ...p, analysis_prompt: e.target.value }))}
+                  className="border rounded-lg px-3 py-2 w-full min-h-[200px] dark:bg-gray-800 dark:text-gray-100 font-mono text-sm"
+                  disabled={editingTemplateReadOnly}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Переменные: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{'{dialog_text}'}</code>, 
+                  <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded ml-1">{'{scenario_description}'}</code>, 
+                  <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded ml-1">{'{user_role}'}</code>, 
+                  <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded ml-1">{'{ai_role}'}</code>
+                </p>
+              </div>
               <div className="flex justify-end gap-2">
                 <button type="button" onClick={() => setShowEditTemplateModal(false)} className="px-4 py-2 rounded bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200">Закрыть</button>
                 {editingTemplateReadOnly ? null : (

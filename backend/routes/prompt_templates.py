@@ -4,6 +4,42 @@ from models.models import PromptTemplate, Organization, Users, db
 from sqlalchemy.exc import IntegrityError
 from utils.redis_client import redis_client
 
+# Дефолтный промпт анализа, если не передан при создании шаблона
+DEFAULT_ANALYSIS_PROMPT = """Ты опытный эксперт по обучению персонала в сфере обслуживания клиентов. Проанализируй следующий диалог:
+
+**Контекст сценария:**
+- Сценарий: {scenario_description}
+- Роль сотрудника: {user_role}
+- Роль клиента (ИИ): {ai_role}
+
+**Диалог:**
+{dialog_text}
+
+**Задание:**
+Проведи детальный анализ диалога (не более 400 слов), структурированный по следующим пунктам:
+
+1. **Общая оценка диалога** (3-4 предложения)
+   - Как прошел разговор в целом
+   - Была ли достигнута цель коммуникации
+   - Общее впечатление от взаимодействия
+
+2. **Сильные стороны сотрудника** (3-4 конкретных примера)
+   - Какие навыки общения были продемонстрированы успешно
+   - Удачные фразы и подходы
+   - Проявление эмпатии, профессионализма
+
+3. **Области для улучшения** (3-4 конкретных момента)
+   - Что можно было сделать лучше
+   - Упущенные возможности
+   - Ошибки в коммуникации
+
+4. **Практические рекомендации** (3-5 конкретных советов)
+   - Что делать в следующий раз
+   - Какие фразы использовать
+   - Как улучшить подход
+
+Отвечай только на {language} языке. Будь конструктивен, конкретен и поддерживающ. Приводи примеры из диалога."""
+
 prompt_templates_bp = Blueprint('prompt_templates', __name__)
 
 @prompt_templates_bp.route('/prompt-templates', methods=['GET'])
@@ -40,6 +76,7 @@ def get_prompt_templates():
                 'content_continue': template.content_continue,
                 'forbidden_words': template.forbidden_words,
                 'sections_json': template.sections_json,
+                'analysis_prompt': template.analysis_prompt,
                 'organization_id': template.organization_id,
                 'created_at': template.created_at.isoformat() if template.created_at else None,
                 'created_by_user_id': template.created_by_user_id,
@@ -83,6 +120,7 @@ def create_prompt_template():
             content_continue=data.get('content_continue', ''),
             forbidden_words=data.get('forbidden_words', ''),
             sections_json=data.get('sections_json', ''),
+            analysis_prompt=(data.get('analysis_prompt') or DEFAULT_ANALYSIS_PROMPT),
             organization_id=data.get('organization_id'),
             created_by_user_id=user_id,
             is_global=data.get('is_global', True)
@@ -90,7 +128,6 @@ def create_prompt_template():
         
         db.session.add(new_template)
         db.session.commit()
-        
         return jsonify({
             'id': new_template.id,
             'name': new_template.name,
@@ -99,12 +136,14 @@ def create_prompt_template():
             'content_continue': new_template.content_continue,
             'forbidden_words': new_template.forbidden_words,
             'sections_json': new_template.sections_json,
+            'analysis_prompt': new_template.analysis_prompt,
             'organization_id': new_template.organization_id,
             'created_at': new_template.created_at.isoformat() if new_template.created_at else None,
             'created_by_user_id': new_template.created_by_user_id,
             'is_global': new_template.is_global
         }), 201
-    
+
+
     except IntegrityError as e:
         db.session.rollback()
         return jsonify({'error': 'Шаблон с таким именем уже существует'}), 400
@@ -146,6 +185,8 @@ def update_prompt_template(template_id):
             template.content_continue = data['content_continue']
         if 'forbidden_words' in data:
             template.forbidden_words = data['forbidden_words']
+        if 'analysis_prompt' in data:
+            template.analysis_prompt = data['analysis_prompt']
         if 'sections_json' in data:
             template.sections_json = data['sections_json']
         if 'organization_id' in data:
@@ -162,6 +203,7 @@ def update_prompt_template(template_id):
             'content_start': template.content_start,
             'content_continue': template.content_continue,
             'forbidden_words': template.forbidden_words,
+            'analysis_prompt': template.analysis_prompt,
             'sections_json': template.sections_json,
             'organization_id': template.organization_id,
             'created_at': template.created_at.isoformat() if template.created_at else None,

@@ -245,6 +245,7 @@ class PromptTemplate(db.Model):
     content_continue = Column(Text)  # Контент для продолжения диалога
     forbidden_words = Column(Text)  # Запрещенные слова
     sections_json = Column(Text)  # JSON с секциями шаблона
+    analysis_prompt = Column(Text)  # Промпт для анализа диалога
     organization_id = Column(Integer, ForeignKey('organizations.id'), nullable=True)  # Связь с организацией
     created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
     created_by_user_id = Column(Integer, ForeignKey('users.id'), nullable=True)  # Создатель шаблона
@@ -382,5 +383,3 @@ def init_default_data():
             current_app.logger.info("Организация по умолчанию создана.")
         else:
             current_app.logger.info("Организация по умолчанию уже существует.")
-
-
