@@ -88,9 +88,30 @@ with app.app_context():
             )
             
             db.session.commit()
-            app.logger.info("✅ Колонка analysis_prompt успешно добавлена и заполнена дефолтными значениями")
+            app.logger.info("Колонка analysis_prompt успешно добавлена и заполнена дефолтным значением")
         else:
-            app.logger.info("Колонка analysis_prompt уже существует, миграция не требуется")
+            app.logger.info("Колонка analysis_prompt уже существует")
+        
+        # Миграция 2: Изменение типа колонки description в scenarios на TEXT
+        app.logger.info("Проверка типа колонки description в таблице scenarios...")
+        result = db.session.execute(text("""
+            SELECT data_type, character_maximum_length 
+            FROM information_schema.columns 
+            WHERE table_name = 'scenarios' AND column_name = 'description'
+        """))
+        column_info = result.fetchone()
+        
+        if column_info and column_info[0] == 'character varying' and column_info[1] == 500:
+            # Колонка имеет ограничение VARCHAR(500), меняем на TEXT
+            app.logger.info("Изменение типа колонки description с VARCHAR(500) на TEXT...")
+            db.session.execute(text("""
+                ALTER TABLE scenarios 
+                ALTER COLUMN description TYPE TEXT
+            """))
+            db.session.commit()
+            app.logger.info("Тип колонки description успешно изменен на TEXT")
+        else:
+            app.logger.info("Колонка description уже имеет тип TEXT или не требует изменений")
             
     except Exception as e:
         app.logger.error(f"Ошибка при миграции analysis_prompt: {e}")

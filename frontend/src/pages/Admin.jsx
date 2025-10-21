@@ -95,6 +95,31 @@ const Admin = () => {
   const [moderatorsSearchQuery, setModeratorsSearchQuery] = useState('');
   const [filteredModerators, setFilteredModerators] = useState([]);
 
+  //СОСТОЯНИЕ ДЛЯ СФЕР СЦЕНAРИЯ
+  const [uniqueSpheres, setUniqueSpheres] = useState([]);
+
+// Загрузка уникальных сфер
+const fetchUniqueSpheres = async () => {
+  try {
+    const token = localStorage.getItem('access_token');
+    const response = await fetch('/api/scenarios/unique-spheres', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      setUniqueSpheres(data.spheres || []);
+    }
+  } catch (error) {
+    console.error('Ошибка загрузки сфер:', error);
+  }
+};
+
+
+
   // Состояния для управления достижениями
   const [achievements, setAchievements] = useState([]);
   const [loadingAchievements, setLoadingAchievements] = useState(true);
@@ -311,6 +336,20 @@ const DEFAULT_ANALYSIS_PROMPT = `Ты опытный эксперт по обу�
       return 0;
     });
 
+  const truncateText = (text, maxLength = 100) => {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+
+  useEffect(() => {
+    if (showAddScenarioModal) {
+      fetchUniqueSpheres();
+    }
+  }, [showAddScenarioModal]);
+
+  
   // --- Пагинация достижений ---
   const [achievementPage, setAchievementPage] = useState(1);
   const achievementsPerPage = 5;
@@ -2424,7 +2463,11 @@ const [orgScenariosSearchQuery, setOrgScenariosSearchQuery] = useState('');
                           {scenario.organization_id ? (orgIdToName[scenario.organization_id] || 'Орг.') : 'Общий'}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300">{scenario.description}</td>
+                      <td className="px-4 py-2 text-gray-700 dark:text-gray-300">
+                        <div className="max-w-xs" title={scenario.description}>
+                          {truncateText(scenario.description, 150)}
+                        </div>
+                      </td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden xs:table-cell">{scenario.sphere}</td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden sm:table-cell">{scenario.situation}</td>
                       <td className="px-4 py-2 text-gray-700 dark:text-gray-300 hidden md:table-cell">{scenario.organization_id ? (orgIdToName[scenario.organization_id] || '-') : '—'}</td>
@@ -3203,17 +3246,26 @@ const [orgScenariosSearchQuery, setOrgScenariosSearchQuery] = useState('');
               </div>
               <div className="border-b border-gray-200 dark:border-gray-700/40 pb-4 mb-2"></div>
               <div>
-                <label htmlFor="scenario-sphere" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Сфера:</label>
-                <input
-                  type="text"
-                  id="scenario-sphere"
-                  name="sphere"
-                  value={scenarioFormData.sphere}
-                  onChange={(e) => setScenarioFormData({ ...scenarioFormData, sphere: e.target.value })}
-                  className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
-                  required
-                  placeholder="Например: Работа, Учёба, Личная жизнь"
-                />
+              <label htmlFor="scenario-sphere" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Сфера:</label>
+              <input
+                type="text"
+                list="spheres-datalist"
+                id="scenario-sphere"
+                name="sphere"
+                value={scenarioFormData.sphere}
+                onChange={(e) => setScenarioFormData({ ...scenarioFormData, sphere: e.target.value })}
+                className="w-full h-12 px-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400 focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 text-base transition-colors shadow-sm"
+                required
+                placeholder="Выберите из списка или введите свою сферу"
+              />
+              <datalist id="spheres-datalist">
+                {uniqueSpheres.map((sphere, index) => (
+                  <option key={index} value={sphere} />
+                ))}
+              </datalist>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Начните вводить или выберите из списка существующих сфер
+              </p>
               </div>
               <div>
                 <label htmlFor="scenario-situation" className="block text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">Ситуация:</label>
@@ -3388,17 +3440,23 @@ const [orgScenariosSearchQuery, setOrgScenariosSearchQuery] = useState('');
                 ></textarea>
               </div>
               <div className="mb-4">
-                <label htmlFor="edit-scenario-sphere" className="block text-gray-700 text-sm font-bold mb-2">Сфера:</label>
+              <label htmlFor="edit-scenario-sphere" className="block text-gray-700 text-sm font-bold mb-2">Сфера:</label>
                 <input
                   type="text"
+                  list="edit-spheres-datalist"
                   id="edit-scenario-sphere"
                   name="sphere"
                   value={currentScenario.sphere}
                   onChange={(e) => setCurrentScenario({ ...currentScenario, sphere: e.target.value })}
                   className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                   required
-                  placeholder="Например: Работа, Учеба, Личная жизнь"
+                  placeholder="Выберите из списка или введите свою сферу"
                 />
+                <datalist id="edit-spheres-datalist">
+                  {uniqueSpheres.map((sphere, index) => (
+                    <option key={index} value={sphere} />
+                  ))}
+                </datalist>
               </div>
               <div className="mb-4">
                 <label htmlFor="edit-scenario-situation" className="block text-gray-700 text-sm font-bold mb-2">Ситуация:</label>

@@ -282,7 +282,7 @@ def update_scenario(scenario_id):
 
     # Обновляем только те поля, которые пришли в запросе
     for field in [
-        'name', 'description', 'category', 'subcategory', 'mood', 'language',
+        'name', 'description', 'category', 'subcategory', 'sphere', 'situation', 'mood', 'language',
         'user_role', 'ai_role', 'ai_behavior', 'is_template'
     ]:
         if field in data:

@@ -416,45 +416,81 @@ const Scenarios = () => {
                   </div>
                 )}
 
-                {/* Секция выбора настроения */}
-                <div className="mb-6 sm:mb-12 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-                  <h2 className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-300 mb-0.5 sm:mb-0 min-w-[90px] sm:min-w-[120px]">Настроение</h2>
-                  <select
-                    value={selectedMood}
-                    onChange={(e) => setSelectedMood(e.target.value)}
-                    className="block w-full max-w-md p-2 sm:p-4 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800 text-blue-900 dark:text-gray-100 text-xs sm:text-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 shadow-sm transition-colors"
-                  >
-                    {uniqueMoods.map(mood => (
-                      <option key={mood.value} value={mood.value}>{mood.label}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Секция с описанием выбранной ситуации */}
+                {selectedSituation && (
+                  <div className="mb-6 sm:mb-12">
+                    <h2 className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-300 mb-3 sm:mb-4 text-center">
+                      {scenariosByOrganization.find(s => s.situation === selectedSituation)?.name || selectedSituation}
+                    </h2>
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-4 sm:p-6 border border-blue-200 dark:border-blue-700">
+                      <p className="text-sm sm:text-base text-gray-700 dark:text-gray-300 leading-relaxed">
+                        {scenariosByOrganization.find(s => s.situation === selectedSituation)?.description || 'Описание недоступно'}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
-                {/* Секция выбора языка */}
-                <div className="mb-6 sm:mb-12 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-                  <h2 className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-300 mb-0.5 см:mb-0 min-w-[90px] sm:min-w-[120px]">Язык</h2>
-                  <select
-                    value={selectedLanguage}
-                    onChange={(e) => setSelectedLanguage(e.target.value)}
-                    className="block w-full max-w-md p-2 sm:p-4 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800 text-blue-900 dark:text-gray-100 text-xs sm:text-lg focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 shadow-sm transition-colors"
-                  >
-                    {uniqueLanguages.map(lang => (
-                      <option key={lang.value} value={lang.value}>{lang.label}</option>
-                    ))}
-                  </select>
-                </div>
+                {/* Секция "Дополнительно" */}
+                {selectedSituation && (
+                  <div className="mb-6 sm:mb-12">
+                    <h2 className="text-base sm:text-2xl font-bold text-blue-700 dark:text-blue-300 mb-3 sm:mb-4 text-center">Дополнительно</h2>
+                    
+                    {/* Язык */}
+                    <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+                      <label className="text-sm sm:text-lg font-medium text-blue-700 dark:text-blue-300 min-w-[90px] sm:min-w-[120px]">Язык</label>
+                      <select
+                        value={selectedLanguage}
+                        onChange={(e) => setSelectedLanguage(e.target.value)}
+                        className="block w-full max-w-md p-2 sm:p-3 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800 text-blue-900 dark:text-gray-100 text-xs sm:text-base focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 shadow-sm transition-colors"
+                      >
+                        {uniqueLanguages.map(lang => (
+                          <option key={lang.value} value={lang.value}>{lang.label}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                {/* Секция выбора режима "на время" */}
-                <div className="mb-8 sm:mb-12 flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="isTimed"
-                    checked={isTimed}
-                    onChange={(e) => setIsTimed(e.target.checked)}
-                    className="mr-2 h-4 w-4 sm:h-6 sm:w-6 accent-blue-600 dark:accent-blue-400 rounded focus:ring-blue-400 border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800"
-                  />
-                  <label htmlFor="isTimed" className="text-xs sm:text-lg font-medium text-blue-700 dark:text-blue-300 select-none">Тренировка на время</label>
-                </div>
+                    {/* Настроение */}
+                    <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
+                      <label className="text-sm sm:text-lg font-medium text-blue-700 dark:text-blue-300 min-w-[90px] sm:min-w-[120px]">Настроение</label>
+                      <select
+                        value={selectedMood}
+                        onChange={(e) => setSelectedMood(e.target.value)}
+                        className="block w-full max-w-md p-2 sm:p-3 rounded-xl border border-blue-300 dark:border-blue-700 bg-white dark:bg-gray-800 text-blue-900 dark:text-gray-100 text-xs sm:text-base focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 shadow-sm transition-colors"
+                      >
+                        {uniqueMoods.map(mood => (
+                          <option key={mood.value} value={mood.value}>{mood.label}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* На время */}
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm sm:text-lg font-medium text-blue-700 dark:text-blue-300 min-w-[90px] sm:min-w-[120px]">На время</label>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="timed"
+                            checked={isTimed === true}
+                            onChange={() => setIsTimed(true)}
+                            className="h-4 w-4 sm:h-5 sm:w-5 accent-blue-600 dark:accent-blue-400"
+                          />
+                          <span className="text-xs sm:text-base text-gray-700 dark:text-gray-300">Да</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="timed"
+                            checked={isTimed === false}
+                            onChange={() => setIsTimed(false)}
+                            className="h-4 w-4 sm:h-5 sm:w-5 accent-blue-600 dark:accent-blue-400"
+                          />
+                          <span className="text-xs sm:text-base text-gray-700 dark:text-gray-300">Нет</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Кнопка "Начать диалог" */}
                 <div className="text-center mt-4 sm:mt-16">
