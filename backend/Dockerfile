@@ -12,18 +12,23 @@ RUN apt-get update && \
         netcat-traditional \
     && rm -rf /var/lib/apt/lists/*
 
-# Копируем requirements.tx
+# Копируем requirements.txt
 COPY requirements.txt .
 
 # Устанавливаем Python-зависимости
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
-# Копируем остальной код приложения
+# Копируем скрипты и приложение
 COPY app.py .
 COPY config.py .
 COPY gunicorn_config.py .
-COPY init_db.sh ./init_db.sh
+COPY init_db.sh init_db.sh
+
+# Устанавливаем права на выполнение скриптов
+RUN chmod +x  init_db.sh
+
+# Копируем остальные файлы
 COPY database/ database/
 COPY config/ config/
 COPY models/ models/

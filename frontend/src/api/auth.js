@@ -85,4 +85,18 @@ export const getProfile = async () => {
     } catch (error) {
         throw error.response?.data || error;
     }
-}; 
+};
+
+// VK ID Authentication
+export const vkAuth = async (code, deviceId) => {
+  try {
+    const response = await api.post('/auth/vk/verify', {
+      code,
+      device_id: deviceId
+    });
+    return response.data;
+  } catch (error) {
+    console.error('VK auth error:', error);
+    throw error.response?.data || error;
+  }
+};

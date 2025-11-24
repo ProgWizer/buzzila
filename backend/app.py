@@ -213,6 +213,7 @@ from routes.admin import admin_bp
 from routes.uploads import uploads_bp
 from routes.activity import activity_bp
 from routes.prompt_templates import prompt_templates_bp
+from routes.vk_auth import vk_bp  # Импортируем новый blueprint
 
 # Регистрируем Blueprints (разделяем API по модулям)
 app.register_blueprint(auth_bp, url_prefix='/api/auth')
@@ -225,6 +226,7 @@ app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(uploads_bp, url_prefix='/api')
 app.register_blueprint(activity_bp)
 app.register_blueprint(prompt_templates_bp, url_prefix='/api')
+app.register_blueprint(vk_bp, url_prefix='/api')  # Регистрируем VK OAuth
 
 # Хелс-чек эндпоинт для проверки состояния приложения и БД
 @app.route('/health')

@@ -47,6 +47,7 @@ class Users(db.Model):
     username = Column(String(50), unique=True, nullable=False)  # Уникальное имя пользователя
     email = Column(String(120), unique=True, nullable=False)  # Email пользователя
     password_hash = Column(String(256), nullable=False)  # Хэш пароля
+    vk_id = Column(String(50), unique=True, nullable=True)  # Добавляем поле для VK ID
     role = Column(Enum(UserRole), default=UserRole.USER)  # Роль пользователя
     is_active = Column(Boolean, default=True)  # Активен ли пользователь
     created_at = Column(DateTime, default=datetime.utcnow)  # Дата создания
