@@ -39,7 +39,6 @@ const VKAuthSDK = () => {
     const initVKID = () => {
       try {
         console.log('🔄 Инициализируем VK ID...');
-        
         if (!window.VKIDSDK) {
           console.error('❌ VKIDSDK не найден в window');
           setStatus('error');
@@ -48,22 +47,16 @@ const VKAuthSDK = () => {
 
         const { VKIDSDK } = window;
         
-        // ИСПРАВЛЕННЫЙ КОНФИГ - используем правильные константы
         VKIDSDK.Config.init({
-          app: 54348608, // твой app_id
-          // app: 54350017, // твой app_id
+          app: 54348608,
           redirectUrl: 'https://profdailog.com/auth/vk/callback',
-          // redirectUrl: 'https://334e6011ee732584872ff7d0ba1a0b3b.serveo.net/auth/vk/callback/auth/vk/callback', // или тот порт, где фронтенд
-          // Убрал responseMode и source - они устарели в новой версии
           scope: 'email',
         });
 
         console.log('✅ VK ID инициализирован');
 
-        // Создаем экземпляр OneTap
         const oneTap = new VKIDSDK.OneTap();
-        
-        // Рендерим кнопку
+
         if (containerRef.current) {
           console.log('🔄 Рендерим кнопку...');
           
@@ -72,17 +65,10 @@ const VKAuthSDK = () => {
               container: containerRef.current,
               fastAuthEnabled: false,
               showAlternativeLogin: true,
-              style: {
-                width: 300,
-                height: 50
-              }
+              style: { width: 300, height: 50 }
             })
-            .on(VKIDSDK.WidgetEvents.ERROR, (error) => {
-              console.error('❌ Ошибка виджета:', error);
-              setStatus('error');
-            })
-            .on('one_tap_auth_success', async (payload) => { // Изменил событие
-              console.log('✅ Успешный логин:', payload);
+            .on(VKIDSDK.WidgetEvents.SUCCESS, async (payload) => {
+              console.log('✅ OneTap success:', payload);
               try {
                 const response = await vkAuth(payload.code, payload.device_id);
                 await login({
@@ -90,10 +76,16 @@ const VKAuthSDK = () => {
                   refresh_token: response.refresh_token,
                   user: response.user
                 });
-                navigate('/dashboard');
+                // Перенаправление на /profile
+                navigate('/profile');
               } catch (err) {
-                console.error('VK Login error:', err);
+                console.error('VK login error:', err);
+                setStatus('error');
               }
+            })
+            .on(VKIDSDK.WidgetEvents.ERROR, (error) => {
+              console.error('❌ OneTap error:', error);
+              setStatus('error');
             });
 
           setStatus('loaded');
@@ -102,6 +94,7 @@ const VKAuthSDK = () => {
           console.error('❌ containerRef.current не найден');
           setStatus('error');
         }
+
       } catch (error) {
         console.error('❌ Ошибка инициализации VK ID:', error);
         setStatus('error');
@@ -110,7 +103,6 @@ const VKAuthSDK = () => {
 
     loadVKID();
 
-    // Очистка при размонтировании
     return () => {
       if (window.VKIDSDK && window.VKIDSDK.OneTap) {
         try {
@@ -125,16 +117,10 @@ const VKAuthSDK = () => {
 
   return (
     <div>
-      {/* Контейнер для кнопки VK */}
       <div 
         ref={containerRef} 
-        style={{
-          minHeight: '50px',
-          border: status === 'error' ? '2px dashed red' : 'none'
-        }}
+        style={{ minHeight: '50px', border: status === 'error' ? '2px dashed red' : 'none' }}
       />
-      
-      {/* Отладочная информация */}
       <div style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
         Статус: {status === 'loading' && 'Загрузка...'}
         {status === 'loaded' && '✅ Кнопка загружена'}
