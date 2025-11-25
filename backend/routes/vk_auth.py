@@ -18,8 +18,8 @@ def get_vk_user_info(access_token, user_id):
         'access_token': access_token,
         'v': '5.131'
     }
-    response = requests.get(url, params=params)
-    return response.json().get('response', [{}])[0]
+    resp = requests.get(url, params=params)
+    return resp.json().get('response', [{}])[0]
 
 @vk_bp.route('/auth/vk/verify', methods=['POST'])
 def vk_verify():
@@ -28,7 +28,7 @@ def vk_verify():
     device_id = data.get('device_id')
 
     if not code or not device_id:
-        return jsonify({'error': 'Неверные параметры запроса'}), 400
+        return jsonify({'error': 'Неверные параметры'}), 400
 
     try:
         # VK ID SDK v2 verify endpoint
@@ -45,7 +45,7 @@ def vk_verify():
         token_data = r.json()
 
         if 'error' in token_data:
-            return jsonify({'error': token_data.get('error_description', 'Ошибка авторизации VK')}), 400
+            return jsonify({'error': token_data.get('error_description', 'Ошибка VK')}), 400
 
         access_token = token_data.get('access_token')
         vk_user_id = token_data.get('user_id')
@@ -86,5 +86,5 @@ def vk_verify():
         })
 
     except Exception as e:
-        current_app.logger.error(f"VK verify error: {str(e)}")
+        current_app.logger.error(f"VK verify error: {e}")
         return jsonify({'error': 'Ошибка верификации VK ID'}), 500

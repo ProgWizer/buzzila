@@ -88,15 +88,27 @@ export const getProfile = async () => {
 };
 
 // VK ID Authentication
-export const vkAuth = async (code, deviceId) => {
-  try {
-    const response = await api.post('/auth/vk/verify', {
-      code,
-      device_id: deviceId
+// export const vkAuth = async (code, deviceId) => {
+//   try {
+//     const response = await api.post('/auth/vk/verify', {
+//       code,
+//       device_id: deviceId
+//     });
+//     return response.data;
+//   } catch (error) {
+//     console.error('VK auth error:', error);
+//     throw error.response?.data || error;
+//   }
+// };
+
+export const vkAuth = async (code, device_id) => {
+    const res = await fetch('/auth/vk/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, device_id })
     });
-    return response.data;
-  } catch (error) {
-    console.error('VK auth error:', error);
-    throw error.response?.data || error;
-  }
-};
+  
+    if (!res.ok) throw new Error('VK auth failed');
+    return res.json();
+  };
+  
