@@ -111,4 +111,13 @@ export const vkAuth = async (code, device_id) => {
     if (!res.ok) throw new Error('VK auth failed');
     return res.json();
   };
-  
+export const yandexAuth = async (code) => {
+    const res = await fetch('/auth/yandex/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+    });
+
+if (!res.ok) throw new Error('Yandex auth failed');
+    return res.json();
+};

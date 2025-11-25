@@ -3,6 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import VKAuthSDK from '../components/VKAuthSDK';
 
+const YANDEX_CLIENT_ID = 'b269904fa9be4b55a7a253a69266e393'; // Вставь сюда свой
+
 const Login = () => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -19,7 +21,7 @@ const Login = () => {
         try {
             const result = await login({ email, password });
             if (result.success) {
-                const from = location.state?.from?.pathname || '/';
+                const from = location.state?.from?.pathname || '/profile';
                 navigate(from, { replace: true });
             } else {
                 setError(result.error || 'Произошла ошибка при входе');
@@ -38,52 +40,50 @@ const Login = () => {
                     <h2 className="text-2xl md:text-3xl font-bold text-center text-[#0D47A1] dark:text-blue-200 leading-tight transition-colors" style={{fontFamily: 'Inter, sans-serif'}}>
                         Войдите, чтобы начать тренировку или перейти в профиль
                     </h2>
-                    <form className="w-full space-y-6" onSubmit={handleSubmit}>
-                        {error && (
-                            <div className="rounded-lg bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 p-3 text-center transition-colors">
-                                <span className="text-red-700 dark:text-red-200 text-sm font-medium">{error}</span>
-                            </div>
-                        )}
 
-                        {/* VK Login Button */}
-                        <div className="mt-4 w-full">
-                            <VKAuthSDK />
+                    {error && (
+                        <div className="rounded-lg bg-red-100 dark:bg-red-900 border border-red-300 dark:border-red-700 p-3 text-center transition-colors">
+                            <span className="text-red-700 dark:text-red-200 text-sm font-medium">{error}</span>
                         </div>
+                    )}
 
-                        {/* Placeholder Button (пока ничего не делает) */}
-                        <div className="mt-4 w-full">
-                            <button
-                                type="button"
-                                disabled
-                                className="w-full py-3 rounded-xl bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 font-medium text-lg"
-                            >
-                                Вход через другой сервис (будет позже)
-                            </button>
-                        </div>
+                    {/* VK Login Button */}
+                    <div className="mt-4 w-full">
+                        <VKAuthSDK />
+                    </div>
 
-                        {/* Стандартный вход по email */}
-                        <div className="space-y-4 mt-6">
-                            <input
-                                id="email"
-                                name="email"
-                                type="email"
-                                required
-                                placeholder="Email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:border-[#0D47A1] dark:focus:border-blue-400 focus:ring-2 focus:ring-[#0D47A1]/20 dark:focus:ring-blue-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-base shadow-sm transition bg-white dark:bg-gray-900"
-                            />
-                            <input
-                                id="password"
-                                name="password"
-                                type="password"
-                                required
-                                placeholder="Пароль"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:border-[#0D47A1] dark:focus:border-blue-400 focus:ring-2 focus:ring-[#0D47A1]/20 dark:focus:ring-blue-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-base shadow-sm transition bg-white dark:bg-gray-900"
-                            />
-                        </div>
+                    {/* Yandex Login Button */}
+                    <div className="mt-4 w-full">
+                        <a
+                            href={`https://oauth.yandex.com/authorize?response_type=code&client_id=${YANDEX_CLIENT_ID}&redirect_uri=https://profdailog.com/auth/yandex/callback`}
+                            className="w-full inline-block py-3 rounded-xl bg-[#ffcc00] hover:bg-[#f2b500] text-black font-medium text-lg text-center transition"
+                        >
+                            Войти через Яндекс
+                        </a>
+                    </div>
+
+                    {/* Email + Password */}
+                    <form className="w-full space-y-4 mt-6" onSubmit={handleSubmit}>
+                        <input
+                            id="email"
+                            name="email"
+                            type="email"
+                            required
+                            placeholder="Email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            className="w-full px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:border-[#0D47A1] dark:focus:border-blue-400 focus:ring-2 focus:ring-[#0D47A1]/20 dark:focus:ring-blue-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-base shadow-sm transition bg-white dark:bg-gray-900"
+                        />
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            required
+                            placeholder="Пароль"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            className="w-full px-5 py-3 rounded-xl border border-gray-200 dark:border-gray-700 focus:border-[#0D47A1] dark:focus:border-blue-400 focus:ring-2 focus:ring-[#0D47A1]/20 dark:focus:ring-blue-900 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 text-base shadow-sm transition bg-white dark:bg-gray-900"
+                        />
 
                         <button
                             type="submit"
@@ -92,13 +92,13 @@ const Login = () => {
                         >
                             {loading ? 'Загрузка...' : 'Войти'}
                         </button>
-
-                        <div className="text-center text-sm mt-4">
-                            <Link to="/register" className="text-[#0D47A1] dark:text-blue-300 hover:underline font-medium transition-colors">
-                                Нет аккаунта? Зарегистрироваться
-                            </Link>
-                        </div>
                     </form>
+
+                    <div className="text-center text-sm mt-4">
+                        <Link to="/register" className="text-[#0D47A1] dark:text-blue-300 hover:underline font-medium transition-colors">
+                            Нет аккаунта? Зарегистрироваться
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
