@@ -25,6 +25,8 @@ const VKAuthSDK = () => {
       if (!window.VKIDSDK) return setStatus('error');
 
       const { VKIDSDK } = window;
+
+      // Инициализация VK ID v2
       VKIDSDK.Config.init({
         app: 54348608, // твой VK App ID
         redirectUrl: 'https://profdailog.com/auth/vk/callback',
@@ -32,6 +34,7 @@ const VKAuthSDK = () => {
       });
 
       const oneTap = new VKIDSDK.OneTap();
+
       if (!containerRef.current) return setStatus('error');
 
       oneTap
@@ -43,6 +46,7 @@ const VKAuthSDK = () => {
         })
         .on(VKIDSDK.WidgetEvents.SUCCESS, async (payload) => {
           try {
+            // Отправка кода и device_id на бекенд
             const response = await vkAuth(payload.code, payload.device_id);
             await login({
               access_token: response.access_token,

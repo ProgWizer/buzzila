@@ -31,12 +31,12 @@ def vk_verify():
         return jsonify({'error': 'Неверные параметры'}), 400
 
     try:
-        # VK ID SDK v2 verify endpoint
+        # Новый endpoint VK ID v2
         VERIFY_URL = 'https://api.vk.com/oidc/token'
         payload = {
             'client_id': VK_APP_ID,
             'client_secret': VK_APP_SECRET,
-            'code': code,
+            'code': code,            # code_v2
             'device_id': device_id,
             'grant_type': 'vk_device_code'
         }
@@ -47,11 +47,11 @@ def vk_verify():
         if 'error' in token_data:
             return jsonify({'error': token_data.get('error_description', 'Ошибка VK')}), 400
 
-        access_token = token_data.get('access_token')
+        access_token_vk = token_data.get('access_token')
         vk_user_id = token_data.get('user_id')
         email = token_data.get('email')
 
-        user_info = get_vk_user_info(access_token, vk_user_id)
+        user_info = get_vk_user_info(access_token_vk, vk_user_id)
 
         user = Users.query.filter_by(vk_id=str(vk_user_id)).first()
         if not user:
