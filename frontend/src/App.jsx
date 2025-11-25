@@ -15,7 +15,9 @@ import Admin from './pages/Admin';
 import Manager from './pages/ModeratorPanel';
 import Scenarios from './pages/Scenarios';
 import Chat from './pages/Chat';
+
 import YandexCallback from './components/YandexCallback';
+import VKCallback from './components/VKCallback';
 
 // Общие компоненты
 import Navbar from './components/Navbar';
@@ -63,6 +65,7 @@ function App() {
                   }
                 />
                 <Route path="/auth/yandex/callback" element={<YandexCallback />} />
+                <Route path="/auth/vk/callback" element={<VKCallback />} />
                 <Route
                   path="/achievements"
                   element={

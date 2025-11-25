@@ -228,8 +228,8 @@ app.register_blueprint(admin_bp, url_prefix='/api/admin')
 app.register_blueprint(uploads_bp, url_prefix='/api')
 app.register_blueprint(activity_bp)
 app.register_blueprint(prompt_templates_bp, url_prefix='/api')
-app.register_blueprint(vk_bp, url_prefix='/api')  # Регистрируем VK OAuth
-app.register_blueprint(yandex_bp, url_prefix='/api')
+app.register_blueprint(vk_bp, url_prefix='/api/auth')  # Регистрируем VK OAuth
+app.register_blueprint(yandex_bp, url_prefix='/api/auth')
 
 
 # Хелс-чек эндпоинт для проверки состояния приложения и БД

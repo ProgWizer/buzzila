@@ -101,23 +101,34 @@ export const getProfile = async () => {
 //   }
 // };
 
+
+// VK
 export const vkAuth = async (code, device_id) => {
-    const res = await fetch('/auth/vk/verify', {
+    const res = await fetch('/api/auth/vk/verify', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, device_id })
     });
   
-    if (!res.ok) throw new Error('VK auth failed');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(err.error || 'VK auth failed');
+    }
     return res.json();
   };
-export const yandexAuth = async (code) => {
-    const res = await fetch('/auth/yandex/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code })
+  
+  // Yandex
+  export const yandexAuth = async (code) => {
+    const res = await fetch('/api/auth/yandex/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
     });
-
-if (!res.ok) throw new Error('Yandex auth failed');
+  
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+      throw new Error(err.error || 'Yandex auth failed');
+    }
     return res.json();
-};
+  };
+  
