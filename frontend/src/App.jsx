@@ -63,7 +63,6 @@ function App() {
                   }
                 />
                 <Route path="/auth/yandex/callback" element={<YandexCallback />} />
-                
                 <Route
                   path="/achievements"
                   element={

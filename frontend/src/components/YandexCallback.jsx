@@ -1,43 +1,40 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import axios from 'axios';
 
 const YandexCallback = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     const code = params.get('code');
 
-    if (!code) return;
+    if (!code) {
+      console.error('Код Яндекс не получен');
+      return;
+    }
 
     const verifyYandex = async () => {
       try {
-        const res = await fetch('/auth/yandex/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
-        });
-        if (!res.ok) throw new Error('Ошибка авторизации Яндекс');
-        const data = await res.json();
-
+        const response = await axios.post('/api/auth/yandex/verify', { code });
         await login({
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-          user: data.user
+          access_token: response.data.access_token,
+          refresh_token: response.data.refresh_token,
+          user: response.data.user
         });
-
-        navigate('/profile'); // редирект после успешного входа
+        navigate('/profile');
       } catch (err) {
-        console.error('Yandex login error:', err);
+        console.error('Ошибка при верификации Яндекс:', err);
       }
     };
 
     verifyYandex();
-  }, [login, navigate]);
+  }, [location, login, navigate]);
 
-  return <div>Авторизация через Яндекс...</div>;
+  return <div>Загрузка…</div>;
 };
 
 export default YandexCallback;
