@@ -21,10 +21,10 @@ def register():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-    name = data.get('name')
+    name = data.get('username')
 
     # Проверка обязательных полей
-    if not all([email, password, name]):
+    if not all([email, password, username]):
         return jsonify({'error': 'Все поля обязательны для заполнения'}), 400
 
     # Проверка уникальности email
@@ -39,7 +39,7 @@ def register():
     new_user = Users(
         email=email,
         password_hash=hashed_password,
-        username=name,
+        username=username,
         created_at=datetime.utcnow(),
         role=UserRole.ADMIN if is_first_user else UserRole.USER # Присваиваем роль ADMIN, если это первый пользователь
     )

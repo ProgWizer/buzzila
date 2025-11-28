@@ -15,6 +15,24 @@ api.interceptors.request.use(request => {
     return request;
 });
 
+api.interceptors.request.use(
+    request => {
+        // Проверяем, есть ли access_token в localStorage
+        const accessToken = localStorage.getItem('access_token');
+
+        // Если токен есть, добавляем его в заголовок Authorization
+        if (accessToken) {
+            request.headers.Authorization = `Bearer ${accessToken}`;
+        }
+        
+        // console.log('Starting Request', request);
+        return request;
+    },
+    error => {
+        return Promise.reject(error);
+    }
+);
+
 api.interceptors.response.use(
     response => {
         return response;
@@ -39,7 +57,7 @@ export const login = async (email, password) => {
 export const register = async (username, email, password) => {
     try {
         const response = await api.post('/auth/register', {
-            name: username,
+            username,
             email,
             password
         });
