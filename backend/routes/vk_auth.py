@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, redirect #
 from models.models import Users, UserPreferences, UserStatistics, UserRole, db
 from datetime import datetime
 import requests
@@ -88,3 +88,73 @@ def vk_verify():
     except Exception as e:
         current_app.logger.error(f"VK verify error: {e}")
         return jsonify({'error': 'Ошибка верификации VK ID'}), 500
+        
+@vk_bp.route('/auth/vk/callback', methods=['GET'])
+def vk_callback():
+    """Обработка VK OAuth callback (GET для редиректа)"""
+    code = request.args.get('code')
+
+    
+    if not code:
+        # Редиректим на фронтенд с ошибкой
+        return redirect("https://profdailog.com/auth/error?reason=no_code")
+    
+    try:
+        # URL для получения токена (OIDC / OAuth 2.0)
+        VERIFY_URL = 'https://api.vk.com/oidc/token'
+        
+        # ПРАВИЛЬНЫЙ PAYLOAD для редирект-флоу
+        payload = {
+            'client_id': VK_APP_ID,
+            'client_secret': VK_APP_SECRET,
+            'code': code,
+            'grant_type': 'authorization_code', # <-- Изменено
+            'redirect_uri': VK_REDIRECT_URI     # <-- Обязательно должно совпадать
+        }
+
+        r = requests.post(VERIFY_URL, data=payload)
+        token_data = r.json()
+
+        if 'error' in token_data:
+            current_app.logger.error(f"VK Token Error: {token_data}")
+            return redirect("https://profdailog.com/auth/error?reason=vk_api_error")
+
+        access_token_vk = token_data.get('access_token')
+        vk_user_id = token_data.get('user_id')
+        email = token_data.get('email')
+
+        # Получаем инфо о пользователе
+        user_info = get_vk_user_info(access_token_vk, vk_user_id)
+
+        # Логика поиска/создания пользователя (без изменений)
+        user = Users.query.filter_by(vk_id=str(vk_user_id)).first()
+        if not user:
+            user = Users(
+                email=email or f"vk_{vk_user_id}@vk.com",
+                username=f"{user_info.get('first_name', '')} {user_info.get('last_name', '')}".strip(),
+                vk_id=str(vk_user_id),
+                avatar_url=user_info.get('photo_200'),
+                created_at=datetime.utcnow(),
+                role=UserRole.USER,
+                is_active=True
+            )
+            db.session.add(user)
+            db.session.flush()
+            db.session.add(UserPreferences(user_id=user.id))
+            db.session.add(UserStatistics(user_id=user.id))
+            db.session.commit()
+
+        # Создаем JWT
+        access_token_jwt = create_access_token(identity=user.id)
+        refresh_token_jwt = create_refresh_token(identity=user.id)
+
+        # Редирект на фронтенд с токенами
+        # Лучше передавать их как query params, а фронтенд сохранит их в localStorage/Cookies
+        # и сделает history.replaceState, чтобы убрать из URL
+        frontend_url = f"https://profdailog.com/auth/success?access_token={access_token_jwt}&refresh_token={refresh_token_jwt}"
+        
+        return redirect(frontend_url)
+
+    except Exception as e:
+        current_app.logger.error(f"VK callback error: {e}")
+        return redirect("https://profdailog.com/auth/error?reason=internal_error")
