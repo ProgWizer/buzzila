@@ -21,7 +21,7 @@ def register():
     data = request.get_json()
     email = data.get('email')
     password = data.get('password')
-    name = data.get('username')
+    username = data.get('username')
 
     # Проверка обязательных полей
     if not all([email, password, username]):
