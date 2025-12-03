@@ -1,15 +1,20 @@
+import os
 from flask import Blueprint, request, jsonify, current_app
 from models.models import Scenario, Dialog, Message, Users, UserStatistics, Achievement, UserAchievement, UserProgress, PromptTemplate
 from models.database import db
 import requests
 from datetime import datetime
 from flask_jwt_extended import get_jwt_identity, verify_jwt_in_request, jwt_required
-from services.achievement_service import AchievementService
+from services.gigachat_service import gigachat_service
 import time
 from utils.redis_client import redis_client
 import json
+import logging
 
 chat_bp = Blueprint('chat', __name__)
+
+# Настройка логирования
+logger = logging.getLogger(__name__)
 
 # Определение списков для фильтрации ответов ИИ
 FORBIDDEN_KEYWORDS = [
@@ -43,25 +48,84 @@ ROLE_BREAK_PHRASES = [
     "могу организовать возврат", "могу организовать компенсацию",
 ]
 
-@chat_bp.route('/deepseek/health', methods=['GET'])
-@jwt_required()
-def deepseek_health():
+def send_gigachat_message(messages, temperature=0.7, max_tokens=1024, model=None):
     """
-    Проверка доступности DeepSeek: делает минимальный вызов и возвращает статус/ошибку.
+    Отправка сообщения в GigaChat API
+    :param messages: Список сообщений в формате [{"role": "user", "content": "текст"}]
+    :param temperature: Температура генерации (0-1)
+    :param max_tokens: Максимальное количество токенов в ответе
+    :param model: Модель GigaChat (если None, используется из конфига)
+    :return: Ответ от API в формате JSON
     """
     try:
-        params = {
-            'model': current_app.config.get('DEEPSEEK_MODEL', 'deepseek-chat'),
-            'messages': [{'role': 'user', 'content': 'ping'}],
-            'max_tokens': 1,
-            'temperature': 0.0
-        }
-        result = make_deepseek_request(params, retries=0)
-        if result and result.get('choices'):
-            return jsonify({'ok': True, 'detail': 'DeepSeek отвечает', 'model': params['model']}), 200
-        return jsonify({'ok': False, 'detail': 'Ответ пустой или без choices'}), 502
+        response = gigachat_service.send({
+            'model': model or current_app.config.get('GIGACHAT_MODEL', 'GigaChat'),
+            'messages': messages,
+            'temperature': temperature,
+            'max_tokens': max_tokens
+        })
+        return response
     except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)}), 500
+        logger.error(f"Ошибка при отправке сообщения в GigaChat: {str(e)}")
+        raise
+
+@chat_bp.route('/ai/health', methods=['GET'])
+def ai_health():
+    """
+    Проверка доступности GigaChat API
+    """
+    try:
+        # Проверяем доступность сервиса
+        token = gigachat_service._get_auth_token()
+        if not token:
+            raise Exception("Не удалось получить токен доступа")
+            
+        return jsonify({
+            'status': 'ok',
+            'provifer': 'gigachat',
+            'timestamp': datetime.utcnow().isoformat()
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"GigaChat health check error: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e),
+            'provider': 'gigachat'
+        }), 503
+
+@chat_bp.route('/message', methods=['POST'])
+@jwt_required()
+def send_message():
+    """
+    Отправка сообщения в чат
+    """
+    try:
+        data = request.get_json()
+        messages = data.get('messages', [])
+        
+        if not messages:
+            return jsonify({'error': 'Не указаны сообщения'}), 400
+            
+        response = send_gigachat_message(
+            messages=messages,
+            temperature=float(data.get('temperature', 0.7)),
+            max_tokens=int(data.get('max_tokens', 1024)),
+            model=data.get('model')
+        )
+        
+        return jsonify({
+            'status': 'success',
+            'response': response['choices'][0]['message']['content'],
+            'usage': response.get('usage', {})
+        })
+        
+    except Exception as e:
+        logger.error(f"Ошибка при обработке сообщения: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
 
 @chat_bp.route('/categories', methods=['GET'])
 @jwt_required()
@@ -165,7 +229,7 @@ def start_or_get_session():
                 try:
                     first_prompt = generate_system_prompt_for_start(scenario)
                     api_params = {
-                        'model': 'deepseek-chat',
+                        'model': 'GigaChat',
                         'messages': [
                             {'role': 'system', 'content': first_prompt},
                             {'role': 'user', 'content': 'Начни диалог как описано в инструкции. Сразу войди в роль и начни конфликт.'}
@@ -180,7 +244,7 @@ def start_or_get_session():
                     ai_text = None
                     for attempt in range(3):
                         try:
-                            response = make_deepseek_request(api_params, retries=1)
+                            response = gigachat_service.send(api_params, retries=1)
                             # Обработка недостаточного баланса — прекращаем попытки
                             if response and isinstance(response, dict) and response.get('error', {}).get('code') == 'insufficient_balance':
                                 ai_text = get_fallback_response(scenario, reason='insufficient_balance')
@@ -244,7 +308,7 @@ def start_or_get_session():
         first_ai_message = None
         
         api_params = {
-            'model': 'deepseek-chat',
+            'model': 'GigaChat',
             'messages': [
                 {'role': 'system', 'content': first_prompt},
                 {'role': 'user', 'content': 'Начни диалог как описано в инструкции. Сразу войди в роль и начни конфликт.'}
@@ -261,11 +325,12 @@ def start_or_get_session():
             ai_text = None
             for attempt in range(3):
                 try:
-                    response = make_deepseek_request(api_params, retries=1)
+                    response = gigachat_service.send(api_params, retries=1)
                     # Обработка недостаточного баланса — прекращаем попытки
                     if response and isinstance(response, dict) and response.get('error', {}).get('code') == 'insufficient_balance':
                         ai_text = get_fallback_response(scenario, reason='insufficient_balance')
                         break
+                    
                     if response and response.get('choices'):
                         candidate = response['choices'][0]['message']['content'].strip()
                         filtered = filter_ai_response(candidate, scenario)
@@ -412,7 +477,7 @@ def send_session_message(dialog_id):
 
         # Параметры для продолжения диалога
         api_params = {
-            'model': 'deepseek-chat',
+            'model': 'GigaChat',
             'messages': history,
             'temperature': 0.85,
             'max_tokens': 400,
@@ -428,7 +493,7 @@ def send_session_message(dialog_id):
         
         while retry_count < max_retries:
             try:
-                response = make_deepseek_request(api_params, retries=1)
+                response = gigachat_service.send(api_params, retries=1)
                 # Если провайдер вернул недостаточный баланс — не мучаем ретраи
                 if response and isinstance(response, dict) and response.get('error', {}).get('code') == 'insufficient_balance':
                     ai_content = get_fallback_response(dialog.scenario, reason='insufficient_balance')
@@ -456,7 +521,7 @@ def send_session_message(dialog_id):
         
         # Если не удалось получить валидный ответ
         if not ai_content or ai_content == '__ROLE_BREAK__':
-            ai_content = get_fallback_response(dialog.scenario, reason='deepseek_unavailable')
+            ai_content = get_fallback_response(dialog.scenario, reason='gigachat_unavailable')
             current_app.logger.error("Использован резервный ответ")
                 
         # Сохраняем ответ ИИ в базу данных
@@ -695,19 +760,24 @@ def complete_dialog_with_simulation_command(dialog, current_user, message_conten
             for attempt in range(3):
                 try:
                     analysis_params = {
-                        'model': 'deepseek-chat',
+                        'model': 'GigaChat',
                         'messages': [{'role': 'user', 'content': analysis_prompt}],
                         'temperature': 0.3,
                         'max_tokens': 600,
                         'timeout': 15
                     }
                     
-                    response = make_deepseek_request(analysis_params, retries=1)
+                    response = gigachat_service.send(analysis_params, retries=1)
                     
-                    if response and response.get('choices') and len(response['choices']) > 0:
-                        analysis_content = response['choices'][0]['message']['content'].strip()
-                        if analysis_content and len(analysis_content) > 20:
-                            analysis = analysis_content
+                    if response and isinstance(response, dict) and response.get('error', {}).get('code') == 'insufficient_balance':
+                        ai_text = get_fallback_response(dialog.scenario, reason='insufficient_balance')
+                        break
+                    
+                    if response and response.get('choices'):
+                        candidate = response['choices'][0]['message']['content'].strip()
+                        filtered = filter_ai_response(candidate, dialog.scenario)
+                        if filtered and filtered != '__ROLE_BREAK__':
+                            analysis = filtered
                             break
                         
                 except Exception as api_error:
@@ -901,7 +971,7 @@ def finish_dialog(dialog_id):
             return jsonify({'error': 'Диалог уже завершен', 'current_status': dialog.status}), 400
         
         # Получаем данные из запроса
-        data = request.get_json(silent=True) or {}
+        data = request.get_json()
         duration = data.get('duration', 0)
         
         # Обновляем основные поля диалога
@@ -992,19 +1062,20 @@ def finish_dialog(dialog_id):
    - Как улучшить подход
 
 Отвечай только на {getattr(dialog.scenario, 'language')} языке. Будь конструктивен, конкретен и поддерживающ. Приводи примеры из диалога."""
+
                 # Пытаемся получить анализ
                 for attempt in range(3):
                     try:
                         analysis_params = {
-                            'model': 'deepseek-chat',
+                            'model': 'GigaChat',
                             'messages': [{'role': 'user', 'content': analysis_prompt}],
                             'temperature': 0.3,
                             'max_tokens': 600
                         }
                         
-                        response = make_deepseek_request(analysis_params, retries=1)
+                        response = gigachat_service.send(analysis_params, retries=1)
                         
-                        if response and response.get('choices') and len(response['choices']) > 0:
+                        if response and response.get('choices'):
                             analysis_content = response['choices'][0]['message']['content'].strip()
                             if analysis_content and len(analysis_content) > 20:
                                 analysis = analysis_content
@@ -1046,7 +1117,7 @@ def finish_dialog(dialog_id):
         # Обновляем статистику пользователя
         try:
             user_stats = UserStatistics.query.filter_by(user_id=current_user.id).first()
-            if not user_stats:
+            if user_stats is None:
                 user_stats = UserStatistics(
                     user_id=current_user.id,
                     total_dialogs=0,
@@ -1170,248 +1241,25 @@ def finish_dialog(dialog_id):
             'dialog_id': dialog_id
         }), 500
 
-# =============================================================================
-# ФУНКЦИИ ДЛЯ РАБОТЫ С DEEPSEEK API И ПРОМПТАМИ
-# =============================================================================
-
-def make_deepseek_request(params, retries=2):
+def get_fallback_response(scenario, reason='unknown'):
     """
-    Функция для запросов к DeepSeek API с обработкой ошибок
-    """
-    for attempt in range(retries + 1):
-        try:
-            url = current_app.config['DEEPSEEK_API_URL'].rstrip('/') + '/chat/completions'
-            response = requests.post(
-                url,
-                headers={
-                    'Authorization': f'Bearer {current_app.config["DEEPSEEK_API_KEY"]}',
-                    'Content-Type': 'application/json'
-                },
-                json=params,
-                timeout=30
-            )
-            
-            if response.status_code == 200:
-                result = response.json()
-                if result and result.get('choices') and len(result['choices']) > 0:
-                    return result
-                else:
-                    current_app.logger.error("DeepSeek 200 без choices: %s", response.text[:500])
-                    return None
-                    
-            elif response.status_code == 429:  # Rate limit
-                current_app.logger.warning("DeepSeek 429 (rate limit), attempt %s", attempt + 1)
-                time.sleep(2 ** attempt)  # Exponential backoff
-                continue
-                
-            elif response.status_code == 402:
-                # Недостаточный баланс — не повторяем, возвращаем спец-код
-                try:
-                    body = response.json()
-                except Exception:
-                    body = {'error': {'message': response.text}}
-                current_app.logger.error("DeepSeek 402: %s", response.text[:500])
-                return {'error': {'code': 'insufficient_balance', 'detail': body.get('error', {}).get('message')}}
-
-            elif response.status_code in (400, 401, 403):
-                current_app.logger.error("DeepSeek %s: %s", response.status_code, response.text[:500])
-                return None  # Не повторяем auth/bad requests
-                
-            else:
-                current_app.logger.error("DeepSeek %s: %s", response.status_code, response.text[:500])
-                if attempt < retries:
-                    time.sleep(1)
-                    continue
-                return None
-                
-        except requests.exceptions.Timeout:
-            current_app.logger.error("DeepSeek timeout, attempt %s", attempt + 1)
-            if attempt < retries:
-                time.sleep(2)
-                continue
-                
-        except requests.exceptions.ConnectionError as ce:
-            current_app.logger.error("DeepSeek connection error, attempt %s: %s", attempt + 1, str(ce))
-            if attempt < retries:
-                time.sleep(2)
-                continue
-                
-        except Exception as e:
-            current_app.logger.error(f"Неожиданная ошибка на попытке {attempt + 1}: {str(e)}")
-            if attempt < retries:
-                time.sleep(1)
-                continue
+    Генерирует запасной ответ при недоступности GigaChat API.
     
-    return None
-
-@chat_bp.route('/prompt-templates/scenario-map', methods=['GET'])
-@jwt_required()
-def get_scenario_prompt_template_map():
+    :param scenario: Сценарий диалога
+    :param reason: Причина срабатывания запасного варианта
+    :return: Текст запасного ответа
     """
-    Возвращает карту привязок сценарий_id -> template_id из Redis.
-    """
-    try:
-        raw = redis_client.get('scenario_prompt_template_map')
-        if not raw:
-            return jsonify({'map': {}}), 200
-        try:
-            data = json.loads(raw.decode('utf-8'))
-            if not isinstance(data, dict):
-                data = {}
-        except Exception:
-            data = {}
-        return jsonify({'map': data}), 200
-    except Exception as e:
-        return jsonify({'error': 'Не удалось получить карту привязок', 'details': str(e)}), 500
-
-@chat_bp.route('/scenarios/<int:scenario_id>/prompt-template', methods=['PUT'])
-@jwt_required()
-def bind_prompt_template_to_scenario(scenario_id: int):
-    """
-    Привязка шаблона к сценарию: сохраняем в Redis карту scenario_id -> template_id.
-    """
-    try:
-        # проверяем сценарий существует
-        scenario = Scenario.query.get(scenario_id)
-        if not scenario:
-            return jsonify({'error': 'Сценарий не найден'}), 404
-
-        body = request.get_json(silent=True) or {}
-        template_id = body.get('template_id')
-        if not template_id:
-            return jsonify({'error': 'template_id обязателен'}), 400
-
-        # валидация существования шаблона
-        try:
-            from models.models import PromptTemplate
-            tpl = PromptTemplate.query.get(int(template_id))
-        except Exception:
-            tpl = None
-        if not tpl:
-            return jsonify({'error': 'Шаблон не найден'}), 404
-
-        # читаем текущую карту
-        raw = redis_client.get('scenario_prompt_template_map')
-        current_map = {}
-        if raw:
-            try:
-                current_map = json.loads(raw.decode('utf-8'))
-                if not isinstance(current_map, dict):
-                    current_map = {}
-            except Exception:
-                current_map = {}
-
-        # сохраняем
-        current_map[str(scenario_id)] = int(template_id)
-        redis_client.set('scenario_prompt_template_map', json.dumps(current_map, ensure_ascii=False))
-        return jsonify({'ok': True, 'scenario_id': scenario_id, 'template_id': int(template_id)}), 200
-    except Exception as e:
-        return jsonify({'error': 'Не удалось привязать шаблон к сценарию', 'details': str(e)}), 500
-
-@chat_bp.route('/scenarios/<int:scenario_id>/prompt-template', methods=['DELETE'])
-@jwt_required()
-def unbind_prompt_template_from_scenario(scenario_id: int):
-    """
-    Снятие привязки шаблона от сценария.
-    """
-    try:
-        # проверяем сценарий существует
-        scenario = Scenario.query.get(scenario_id)
-        if not scenario:
-            return jsonify({'error': 'Сценарий не найден'}), 404
-
-        raw = redis_client.get('scenario_prompt_template_map')
-        current_map = {}
-        if raw:
-            try:
-                current_map = json.loads(raw.decode('utf-8'))
-                if not isinstance(current_map, dict):
-                    current_map = {}
-            except Exception:
-                current_map = {}
-
-        if str(scenario_id) in current_map:
-            del current_map[str(scenario_id)]
-            redis_client.set('scenario_prompt_template_map', json.dumps(current_map, ensure_ascii=False))
-
-        return jsonify({'ok': True, 'scenario_id': scenario_id}), 200
-    except Exception as e:
-        return jsonify({'error': 'Не удалось удалить привязку шаблона', 'details': str(e)}), 500
-
-@chat_bp.route('/prompt-templates/preview', methods=['POST'])
-@jwt_required()
-def preview_prompt_templates():
-    """
-    Сборка предпросмотра системного промпта и промпта анализа на сервере
-    из переданных полей шаблона (без сохранения).
-    Ожидается JSON: { content_start, content_continue, forbidden_words, sections_json, context, analysis_prompt }
-    """
-    try:
-        data = request.get_json(silent=True) or {}
-        content_start = (data.get('content_start') or '').strip()
-        content_continue = (data.get('content_continue') or '').strip()
-        forbidden_words = (data.get('forbidden_words') or '').strip()
-        context_text = (data.get('context') or '').strip()
-        sections_json = data.get('sections_json')
-        analysis_prompt_custom = (data.get('analysis_prompt') or '').strip()
-
-        role_text = behavior_text = ''
-        guidelines = []
-        if sections_json:
-            try:
-                js = sections_json if isinstance(sections_json, dict) else json.loads(str(sections_json))
-                role_text = (js.get('role') or '').strip()
-                behavior_text = (js.get('behavior') or '').strip()
-                gl = js.get('guidelines')
-                if isinstance(gl, list):
-                    guidelines = [str(x) for x in gl if isinstance(x, (str, int, float))]
-            except Exception:
-                pass
-
-        parts = []
-        if content_start:
-            parts.append(content_start)
-        if role_text:
-            parts.append(f"Роль: {role_text}")
-        if behavior_text:
-            parts.append(f"Поведение: {behavior_text}")
-        if guidelines:
-            parts.append("Рекомендации:\n- " + "\n- ".join(guidelines))
-        if forbidden_words:
-            parts.append(f"Избегай: {forbidden_words}")
-        if content_continue:
-            parts.append(content_continue)
-        if context_text:
-            parts.append(f"Контекст: {context_text}")
-
-        dialog_prompt = "\n\n".join([p for p in parts if p]) or ''
-
-        # Используем кастомный промпт анализа, если он передан
-        if analysis_prompt_custom:
-            analysis_prompt = analysis_prompt_custom
-        else:
-            # Иначе генерируем дефолтный
-            analysis_parts = [
-                'Проанализируй диалог по обслуживанию клиентов на русском языке:',
-            ]
-            if role_text:
-                analysis_parts.append(f"Роль ИИ: {role_text}")
-            if behavior_text:
-                analysis_parts.append(f"Поведение: {behavior_text}")
-            analysis_parts.extend([
-                'Диалог:\n<подставьте текст диалога>',
-                'Дай краткий анализ (не более 300 слов):',
-                '1. Как прошел разговор',
-                '2. Какие навыки общения показал пользователь',
-                '3. Что можно улучшить',
-                '4. Практические рекомендации',
-                'Отвечай только на русском языке, будь конструктивен.'
-            ])
-            analysis_prompt = "\n".join(analysis_parts)
-
-        return jsonify({'dialog_prompt': dialog_prompt, 'analysis_prompt': analysis_prompt}), 200
-    except Exception as e:
-        return jsonify({'error': 'Не удалось собрать предпросмотр', 'details': str(e)}), 500
+    if reason == 'gigachat_unavailable':
+        return "В настоящий момент сервис временно недоступен. Пожалуйста, попробуйте позже."
+    
+    # Общие запасные ответы по сценариям
+    fallback_responses = {
+        'consultation': "Извините, в данный момент я не могу обработать ваш запрос. Пожалуйста, опишите ваш вопрос подробнее.",
+        'support': "К сожалению, я не могу сейчас ответить на ваш вопрос. Наши специалисты свяжутся с вами в ближайшее время.",
+        'default': "Извините, произошла непредвиденная ошибка. Пожалуйста, повторите запрос позже."
+    }
+    
+    return fallback_responses.get(scenario, fallback_responses['default'])
 
 def generate_system_prompt_for_start(scenario):
     """
@@ -1492,7 +1340,7 @@ def generate_system_prompt_for_start(scenario):
 
 ПРИМЕРЫ ПРАВИЛЬНОГО НАЧАЛА:
 - \"Вы что, совсем слепые?! Я весь в вине из-за вашей неосторожности!\"
-- \"Это что за безобразие?! Кто будет отвечать за испорченную одежду?!\"
+- \"Это просто неприемлемо!\"
 - \"Я в шоке от вашего сервиса! Как можно быть таким неаккуратным?!\"
 
 НЕ используй markdown, НЕ объясняй ситуацию, НЕ говори \"Начинаем диалог\".
@@ -1605,48 +1453,3 @@ def filter_ai_response(text, scenario):
         return '__ROLE_BREAK__'
     
     return text
-
-def get_fallback_response(scenario, reason=None):
-    """
-    Резервные ответы когда ИИ не может сгенерировать правильный ответ
-    """
-    # Явное сообщение пользователю о технической проблеме сервиса генерации
-    if reason == 'deepseek_unavailable':
-        return (
-            "Техническая проблема: сервис генерации ответов временно недоступен. "
-            "Ваше сообщение сохранено, попробуйте повторить попытку позже."
-        )
-    if reason == 'insufficient_balance':
-        return (
-            "Сервис генерации ответов временно недоступен: недостаточный баланс провайдера ИИ. "
-            "Мы уже работаем над восстановлением. Попробуйте позже."
-        )
-
-    ai_role = str(getattr(scenario, 'ai_role', '') or '').lower()
-    
-    fallback_responses = {
-        'недовольный': [
-            "Я крайне недоволен вашим сервисом!",
-            "Это просто неприемлемо!",
-            "Я требую немедленного решения!"
-        ],
-        'гость': [
-            "Вы что, издеваетесь?!",
-            "Я не буду это терпеть!",
-            "Где ваш администратор?!"
-        ],
-        'клиент': [
-            "Это что за безобразие?!",
-            "Я в шоке от такого отношения!",
-            "Немедленно исправьте ситуацию!"
-        ]
-    }
-    
-    # Выбираем подходящую категорию ответов
-    for key, responses in fallback_responses.items():
-        if key in ai_role:
-            import random
-            return random.choice(responses)
-    
-    # Универсальный резервный ответ
-    return "Я крайне возмущен происходящим!"

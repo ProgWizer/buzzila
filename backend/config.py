@@ -25,7 +25,7 @@ class Config:
     """
     # Основные настройки
     DEBUG = os.getenv('DEBUG', 'True').lower() == 'true'
-    SECRET_KEY = os.getenv('SECRET_KEY')
+    SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key-please-change-in-production')
     
     # Настройки базы данных PostgreSQL
     DB_USER = os.getenv('DB_USER')
@@ -33,9 +33,8 @@ class Config:
     DB_HOST = os.getenv('DB_HOST')
     DB_PORT = os.getenv('DB_PORT')
     DB_NAME = os.getenv('DB_NAME')
-    SQLALCHEMY_DATABASE_URI = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@db:5432/buzzila')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
     
     CORS_HEADERS = 'Content-Type'
     
@@ -46,13 +45,29 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(days=1)
     
     # Настройки JWT (токены доступа)
-    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
     
-    # Настройки DeepSeek API (интеграция с внешним ИИ)
-    DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
-    DEEPSEEK_API_URL = os.getenv('DEEPSEEK_API_URL')
+    # Настройки GigaChat API
+    GIGACHAT_CLIENT_ID = os.getenv('GIGACHAT_CLIENT_ID')
+    GIGACHAT_CLIENT_SECRET = os.getenv('GIGACHAT_CLIENT_SECRET')
+    GIGACHAT_SCOPE = os.getenv('GIGACHAT_SCOPE', 'GIGACHAT_API_PERS')
+    GIGACHAT_API_URL = os.getenv('GIGACHAT_API_URL', 'https://gigachat.devices.sberbank.ru/api/v1')
+    GIGACHAT_MODEL = os.getenv('GIGACHAT_MODEL', 'GigaChat')
+    GIGACHAT_AUTH = os.getenv('GIGA')
+
+    # Настройки загрузки файлов
+    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
+    ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf', 'doc', 'docx'}
     
+    # Настройки CORS
+    CORS_ORIGINS = os.getenv('CORS_ORIGINS', '').split(',')
+    
+    # Настройки логгирования
+    LOG_LEVEL = os.getenv('LOG_LEVEL', 'INFO')
+    LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+
     # Базовая директория проекта
     BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
